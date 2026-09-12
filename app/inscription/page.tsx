@@ -37,31 +37,21 @@ export default function InscriptionPage() {
 
     setLoading(true);
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          role,
+          full_name: fullName,
+        },
+      },
     });
 
     if (signUpError) {
-      setError(signUpError.message);
+      setError(traduireErreur(signUpError.message));
       setLoading(false);
       return;
-    }
-
-    if (data.user) {
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: data.user.id,
-        role,
-        full_name: fullName,
-      });
-
-      if (profileError) {
-        setError(
-          "Compte créé, mais une erreur est survenue lors de la création du profil."
-        );
-        setLoading(false);
-        return;
-      }
     }
 
     setLoading(false);
@@ -154,4 +144,14 @@ export default function InscriptionPage() {
       </p>
     </main>
   );
+}
+
+function traduireErreur(message: string): string {
+  if (message.includes("already registered")) {
+    return "Un compte existe déjà avec cet email.";
+  }
+  if (message.includes("Password should be")) {
+    return "Le mot de passe doit contenir au moins 6 caractères.";
+  }
+  return "Une erreur est survenue. Réessayez.";
 }
