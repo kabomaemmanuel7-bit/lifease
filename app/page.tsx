@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Briefcase, ClipboardList } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Card } from "@/components/ui/Card";
 import { supabase } from "@/lib/supabase";
@@ -10,7 +11,7 @@ import { getCategoryIcon } from "@/lib/icons";
 
 type Profile = {
   full_name: string;
-  role: string;
+  role: "client" | "travailleur" | "admin";
 };
 
 type Category = {
@@ -75,6 +76,64 @@ export default function HomePage() {
   const prenom = profile?.full_name?.split(" ")[0] || "";
   const initiale = profile?.full_name?.charAt(0).toUpperCase() || "?";
 
+  // ---- Vue Travailleur ----
+  if (profile?.role === "travailleur") {
+    return (
+      <main className="mx-auto max-w-md px-5 py-6">
+        <div className="mb-6 flex items-center justify-between">
+          <Logo />
+          <button
+            onClick={handleSignOut}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-600 text-sm font-medium text-white"
+            aria-label="Se déconnecter"
+          >
+            {initiale}
+          </button>
+        </div>
+
+        <p className="mb-1 text-sm text-ink-600">Bonjour, {prenom}</p>
+        <p className="mb-6 text-base font-medium text-ink-900">
+          Espace professionnel
+        </p>
+
+        <div className="flex flex-col gap-3">
+          <Link href="/travailleur/demandes">
+            <Card className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
+                <ClipboardList className="h-5 w-5 text-wine-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-ink-900">
+                  Mes demandes
+                </p>
+                <p className="text-xs text-ink-600">
+                  Voir et répondre aux demandes reçues
+                </p>
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/travailleur/profil">
+            <Card className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
+                <Briefcase className="h-5 w-5 text-wine-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-ink-900">
+                  Mon profil professionnel
+                </p>
+                <p className="text-xs text-ink-600">
+                  Métier, compétences, statut, disponibilité
+                </p>
+              </div>
+            </Card>
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  // ---- Vue Client ----
   return (
     <main className="mx-auto max-w-md px-5 py-6">
       <div className="mb-6 flex items-center justify-between">
