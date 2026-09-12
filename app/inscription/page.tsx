@@ -1,4 +1,4 @@
-7setError(signUpError.message);"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -43,7 +43,7 @@ export default function InscriptionPage() {
     });
 
     if (signUpError) {
-      setError(traduireErreur(signUpError.message));
+      setError(signUpError.message);
       setLoading(false);
       return;
     }
@@ -154,14 +154,4 @@ export default function InscriptionPage() {
       </p>
     </main>
   );
-}
-
-function traduireErreur(message: string): string {
-  if (message.includes("already registered")) {
-    return "Un compte existe déjà avec cet email.";
-  }
-  if (message.includes("Password should be")) {
-    return "Le mot de passe doit contenir au moins 6 caractères.";
-  }
-  return "Une erreur est survenue. Réessayez.";
 }
