@@ -1,6 +1,11 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { supabase } from "@/lib/supabase";
 
 const categories = [
   { label: "Maison" },
@@ -9,17 +14,70 @@ const categories = [
   { label: "Services" },
 ];
 
+type Profile = {
+  full_name: string;
+  role: string;
+};
+
 export default function HomePage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadUser() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.push("/connexion");
+        return;
+      }
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", session.user.id)
+        .single();
+
+      setProfile(data);
+      setLoading(false);
+    }
+
+    loadUser();
+  }, [router]);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.push("/connexion");
+  }
+
+  if (loading) {
+    return (
+      <main className="mx-auto max-w-md px-5 py-6">
+        <p className="text-sm text-ink-600">Chargement…</p>
+      </main>
+    );
+  }
+
+  const prenom = profile?.full_name?.split(" ")[0] || "";
+  const initiale = profile?.full_name?.charAt(0).toUpperCase() || "?";
+
   return (
     <main className="mx-auto max-w-md px-5 py-6">
       <div className="mb-6 flex items-center justify-between">
         <Logo />
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-600 text-sm font-medium text-white">
-          A
-        </div>
+        <button
+          onClick={handleSignOut}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-600 text-sm font-medium text-white"
+          aria-label="Se déconnecter"
+        >
+          {initiale}
+        </button>
       </div>
 
-      <p className="mb-1 text-sm text-ink-600">Bonjour, Alex</p>
+      <p className="mb-1 text-sm text-ink-600">Bonjour, {prenom}</p>
       <p className="mb-5 text-base font-medium text-ink-900">
         Cotonou, Bénin
       </p>
