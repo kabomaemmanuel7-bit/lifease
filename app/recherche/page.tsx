@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { sortByWeightedRating, Rankable } from '@/lib/sorting';
@@ -31,7 +31,6 @@ const STATUS_TONE: Record<WorkerResult['status'], 'success' | 'warning' | 'neutr
 };
 
 function RechercheContent() {
-  const supabase = createClient();
   const searchParams = useSearchParams();
   const category = searchParams.get('category');
 

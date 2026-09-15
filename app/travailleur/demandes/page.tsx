@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -46,7 +46,6 @@ const STATUS_TONE: Record<Status, 'neutral' | 'warning' | 'success' | 'wine'> = 
 };
 
 export default function DemandesTravailleurPage() {
-  const supabase = createClient();
   const [demandes, setDemandes] = useState<DemandeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
