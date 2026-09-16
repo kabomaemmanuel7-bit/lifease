@@ -110,7 +110,7 @@ export default function DemandesTravailleurPage() {
     filter === 'toutes' ? demandes : demandes.filter((d) => d.status === filter);
 
   return (
-    <div className="min-h-screen bg-[#FAF7F6]">
+    <div className="min-h-screen bg-beige-50">
       <div className="mx-auto max-w-2xl px-4 py-8">
         <header className="mb-6">
           <h1 className="text-2xl font-semibold text-ink-900">Mes demandes reçues</h1>

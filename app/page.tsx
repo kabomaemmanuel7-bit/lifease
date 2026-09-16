@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Briefcase, ClipboardList } from "lucide-react";
-import { Logo } from "@/components/Logo";
+import { NavMenu } from "@/components/NavMenu";
 import { Card } from "@/components/ui/Card";
 import { supabase } from "@/lib/supabase";
 import { getCategoryIcon } from "@/lib/icons";
@@ -67,7 +67,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-md px-5 py-6">
+      <main className="min-h-screen bg-beige-50 mx-auto max-w-md px-5 py-6">
         <p className="text-sm text-ink-600">Chargement…</p>
       </main>
     );
@@ -79,9 +79,78 @@ export default function HomePage() {
   // ---- Vue Travailleur ----
   if (profile?.role === "travailleur") {
     return (
-      <main className="mx-auto max-w-md px-5 py-6">
+      <main className="min-h-screen bg-beige-50">
+        <div className="mx-auto max-w-md px-5 py-6">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <NavMenu />
+              <span className="text-xl font-medium tracking-tight text-wine-600">
+                LifEase
+              </span>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-600 text-sm font-medium text-white"
+              aria-label="Se déconnecter"
+            >
+              {initiale}
+            </button>
+          </div>
+
+          <p className="mb-1 text-sm text-ink-600">Bonjour, {prenom}</p>
+          <p className="mb-6 text-base font-medium text-ink-900">
+            Espace professionnel
+          </p>
+
+          <div className="flex flex-col gap-3">
+            <Link href="/travailleur/demandes">
+              <Card className="flex items-center gap-3 bg-white">
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
+                  <ClipboardList className="h-5 w-5 text-wine-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink-900">
+                    Mes demandes
+                  </p>
+                  <p className="text-xs text-ink-600">
+                    Voir et répondre aux demandes reçues
+                  </p>
+                </div>
+              </Card>
+            </Link>
+
+            <Link href="/travailleur/profil">
+              <Card className="flex items-center gap-3 bg-white">
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
+                  <Briefcase className="h-5 w-5 text-wine-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink-900">
+                    Mon profil professionnel
+                  </p>
+                  <p className="text-xs text-ink-600">
+                    Métier, compétences, statut, disponibilité
+                  </p>
+                </div>
+              </Card>
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ---- Vue Client ----
+  return (
+    <main className="min-h-screen bg-beige-50">
+      <div className="mx-auto max-w-md px-5 py-6">
         <div className="mb-6 flex items-center justify-between">
-          <Logo />
+          <div className="flex items-center gap-2">
+            <NavMenu />
+            <span className="text-xl font-medium tracking-tight text-wine-600">
+              LifEase
+            </span>
+          </div>
           <button
             onClick={handleSignOut}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-600 text-sm font-medium text-white"
@@ -92,104 +161,49 @@ export default function HomePage() {
         </div>
 
         <p className="mb-1 text-sm text-ink-600">Bonjour, {prenom}</p>
-        <p className="mb-6 text-base font-medium text-ink-900">
-          Espace professionnel
+        <p className="mb-5 text-base font-medium text-ink-900">
+          Cotonou, Bénin
         </p>
 
-        <div className="flex flex-col gap-3">
-          <Link href="/travailleur/demandes">
-            <Card className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
-                <ClipboardList className="h-5 w-5 text-wine-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-ink-900">
-                  Mes demandes
-                </p>
-                <p className="text-xs text-ink-600">
-                  Voir et répondre aux demandes reçues
-                </p>
-              </div>
-            </Card>
-          </Link>
+        <Link href="/recherche">
+          <Card className="mb-5 flex items-center gap-2 bg-white text-ink-400">
+            <span className="text-sm">Rechercher un service…</span>
+          </Card>
+        </Link>
 
-          <Link href="/travailleur/profil">
-            <Card className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
-                <Briefcase className="h-5 w-5 text-wine-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-ink-900">
-                  Mon profil professionnel
-                </p>
-                <p className="text-xs text-ink-600">
-                  Métier, compétences, statut, disponibilité
-                </p>
-              </div>
-            </Card>
+        <div className="mb-6 rounded-md bg-wine-600 p-4">
+          <p className="mb-1 text-sm font-medium text-white">Besoin urgent</p>
+          <p className="text-xs text-wine-100">
+            Trouvez un professionnel disponible rapidement
+          </p>
+        </div>
+
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-medium text-ink-600">Catégories</p>
+          <Link href="/categories" className="text-sm font-medium text-wine-600">
+            Voir tout
           </Link>
         </div>
-      </main>
-    );
-  }
+        <div className="mb-6 grid grid-cols-2 gap-3">
+          {categories.map((category) => {
+            const Icon = getCategoryIcon(category.icon);
+            return (
+              <Link key={category.id} href={`/recherche?category=${category.slug}`}>
+                <Card className="flex items-center gap-2 bg-white text-sm text-ink-900">
+                  <Icon className="h-4 w-4 text-wine-600" />
+                  {category.name}
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
 
-  // ---- Vue Client ----
-  return (
-    <main className="mx-auto max-w-md px-5 py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <Logo />
-        <button
-          onClick={handleSignOut}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-600 text-sm font-medium text-white"
-          aria-label="Se déconnecter"
-        >
-          {initiale}
-        </button>
-      </div>
-
-      <p className="mb-1 text-sm text-ink-600">Bonjour, {prenom}</p>
-      <p className="mb-5 text-base font-medium text-ink-900">
-        Cotonou, Bénin
-      </p>
-
-      <Link href="/recherche">
-        <Card className="mb-5 flex items-center gap-2 text-ink-400">
-          <span className="text-sm">Rechercher un service…</span>
-        </Card>
-      </Link>
-
-      <div className="mb-6 rounded-md bg-wine-600 p-4">
-        <p className="mb-1 text-sm font-medium text-white">Besoin urgent</p>
-        <p className="text-xs text-wine-100">
-          Trouvez un professionnel disponible rapidement
-        </p>
-      </div>
-
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-medium text-ink-600">Catégories</p>
-        <Link href="/categories" className="text-sm font-medium text-wine-600">
-          Voir tout
+        <Link href="/recherche">
+          <Card className="bg-white text-center text-sm font-medium text-wine-600">
+            Voir tous les professionnels disponibles
+          </Card>
         </Link>
       </div>
-      <div className="mb-6 grid grid-cols-2 gap-3">
-        {categories.map((category) => {
-          const Icon = getCategoryIcon(category.icon);
-          return (
-            <Link key={category.id} href={`/recherche?category=${category.slug}`}>
-              <Card className="flex items-center gap-2 text-sm text-ink-900">
-                <Icon className="h-4 w-4 text-wine-600" />
-                {category.name}
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
-
-      <Link href="/recherche">
-        <Card className="text-center text-sm font-medium text-wine-600">
-          Voir tous les professionnels disponibles
-        </Card>
-      </Link>
     </main>
   );
 }
