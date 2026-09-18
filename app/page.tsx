@@ -60,11 +60,6 @@ export default function HomePage() {
     loadData();
   }, [router]);
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.push("/connexion");
-  }
-
   if (loading) {
     return (
       <main className="min-h-screen bg-beige-50 mx-auto max-w-md px-5 py-6">
@@ -88,13 +83,13 @@ export default function HomePage() {
                 LifEase
               </span>
             </div>
-            <button
-              onClick={handleSignOut}
+            <Link
+              href="/compte"
               className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-600 text-sm font-medium text-white"
-              aria-label="Se déconnecter"
+              aria-label="Mon compte"
             >
               {initiale}
-            </button>
+            </Link>
           </div>
 
           <p className="mb-1 text-sm text-ink-600">Bonjour, {prenom}</p>
@@ -151,13 +146,13 @@ export default function HomePage() {
               LifEase
             </span>
           </div>
-          <button
-            onClick={handleSignOut}
+          <Link
+            href="/compte"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-600 text-sm font-medium text-white"
-            aria-label="Se déconnecter"
+            aria-label="Mon compte"
           >
             {initiale}
-          </button>
+          </Link>
         </div>
 
         <p className="mb-1 text-sm text-ink-600">Bonjour, {prenom}</p>
