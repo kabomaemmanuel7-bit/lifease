@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { getCategoryIcon } from "@/lib/icons";
+import { getServiceIcon } from "@/lib/icons";
 
 type Category = {
   id: string;
@@ -114,7 +114,7 @@ export function NavMenu() {
                     <p className="px-9 py-2 text-sm text-ink-400">Chargement…</p>
                   ) : (
                     categories.map((cat) => {
-                      const Icon = getCategoryIcon(cat.icon);
+                      const Icon = getServiceIcon(cat.icon);
                       return (
                         <Link
                           key={cat.id}
