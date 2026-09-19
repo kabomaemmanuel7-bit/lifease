@@ -34,7 +34,7 @@ const statusTone: Record<WorkerResult["status"], "success" | "warning" | "neutra
 export function SearchView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const categorySlug = searchParams.get("category");
+  const categorySlug = searchParams.get("service");
 
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [results, setResults] = useState<WorkerResult[]>([]);
@@ -48,7 +48,7 @@ export function SearchView() {
 
       if (categorySlug) {
         const { data: category } = await supabase
-          .from("categories")
+          .from("services")
           .select("id, name")
           .eq("slug", categorySlug)
           .single();
@@ -68,7 +68,7 @@ export function SearchView() {
         );
 
       if (categoryId) {
-        query = query.eq("category_id", categoryId);
+        query = query.eq("service_id", categoryId);
       }
 
       const { data: workers } = await query;

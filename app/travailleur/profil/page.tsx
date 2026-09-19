@@ -52,7 +52,7 @@ export default function TravailleurProfilPage() {
       }
 
       const { data: categoryData } = await supabase
-        .from("categories")
+        .from("services")
         .select("id, name")
         .order("name");
       setCategories(categoryData ?? []);
@@ -64,7 +64,7 @@ export default function TravailleurProfilPage() {
         .single();
 
       if (existing) {
-        setCategoryId(existing.category_id ?? "");
+        setCategoryId(existing.service_id ?? "");
         setMetier(existing.metier ?? "");
         setCompetences((existing.competences ?? []).join(", "));
         setZone(existing.zone ?? "");
@@ -92,7 +92,7 @@ export default function TravailleurProfilPage() {
 
     const { error: upsertError } = await supabase.from("worker_profiles").upsert({
       id: userId,
-      category_id: categoryId,
+      service_id: categoryId,
       metier: metier.trim(),
       competences: competences
         .split(",")
@@ -162,7 +162,7 @@ export default function TravailleurProfilPage() {
         </div>
 
         <label className="mb-1.5 block text-sm font-medium text-ink-900">
-          Catégorie
+          Service
         </label>
         <select
           value={categoryId}

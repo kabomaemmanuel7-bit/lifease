@@ -41,7 +41,7 @@ export function NavMenu() {
   useEffect(() => {
     if (open && categories.length === 0) {
       supabase
-        .from("categories")
+        .from("services")
         .select("id, slug, name, icon")
         .order("name")
         .then(({ data }) => setCategories(data ?? []));
@@ -101,7 +101,7 @@ export function NavMenu() {
                   showCategories ? "bg-beige-50 font-medium text-ink-900" : "text-ink-900"
                 }`}
               >
-                Catégories
+                Services
                 <ChevronDown
                   className={`h-4 w-4 text-ink-400 transition-transform ${
                     showCategories ? "rotate-180" : ""
@@ -118,7 +118,7 @@ export function NavMenu() {
                       return (
                         <Link
                           key={cat.id}
-                          href={`/recherche?category=${cat.slug}`}
+                          href={`/recherche?service=${cat.slug}`}
                           onClick={closeMenu}
                           className="flex items-center gap-2 px-9 py-2.5 text-sm text-ink-600 hover:text-wine-600"
                         >
@@ -129,11 +129,11 @@ export function NavMenu() {
                     })
                   )}
                   <Link
-                    href="/categories"
+                    href="/services"
                     onClick={closeMenu}
                     className="px-9 py-2.5 text-sm font-medium text-wine-600"
                   >
-                    Voir toutes les catégories
+                    Voir tous les services
                   </Link>
                 </div>
               )}

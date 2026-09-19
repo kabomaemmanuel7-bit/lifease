@@ -1,13 +1,57 @@
-import { Home, Car, Laptop, Sparkles, HeartPulse, Wrench } from "lucide-react";
+import {
+  Home,
+  Car,
+  Laptop,
+  Sparkles,
+  HeartPulse,
+  Wrench,
+  Zap,
+  HardHat,
+  Grid,
+  Hammer,
+  Flame,
+  PaintRoller,
+  Leaf,
+  Truck,
+  KeyRound,
+  Wind,
+  Tv,
+  Scissors,
+  Shirt,
+  Camera,
+  ChefHat,
+  Package,
+  Shield,
+  Calculator,
+} from "lucide-react";
 
-export const categoryIcons: Record<string, typeof Home> = {
+export const serviceIcons: Record<string, typeof Home> = {
   home: Home,
   car: Car,
   laptop: Laptop,
   sparkles: Sparkles,
   "heart-pulse": HeartPulse,
+  zap: Zap,
+  "hard-hat": HardHat,
+  grid: Grid,
+  hammer: Hammer,
+  flame: Flame,
+  "paint-roller": PaintRoller,
+  wrench: Wrench,
+  leaf: Leaf,
+  truck: Truck,
+  "key-round": KeyRound,
+  wind: Wind,
+  tv: Tv,
+  scissors: Scissors,
+  shirt: Shirt,
+  camera: Camera,
+  "chef-hat": ChefHat,
+  package: Package,
+  shield: Shield,
+  calculator: Calculator,
 };
 
-export function getCategoryIcon(icon: string) {
-  return categoryIcons[icon] ?? Wrench;
+export function getServiceIcon(icon: string) {
+  return serviceIcons[icon] ?? Wrench;
 }
