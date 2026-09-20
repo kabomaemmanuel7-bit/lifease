@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Star } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -57,6 +58,7 @@ export function WorkerProfileView({
   workerId: string;
   variant: "own" | "public";
 }) {
+  const router = useRouter();
   const [worker, setWorker] = useState<WorkerData | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
@@ -124,6 +126,11 @@ export function WorkerProfileView({
     loadAll();
   }, [workerId]);
 
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.push("/connexion");
+  }
+
   if (loading) {
     return <p className="text-sm text-ink-600">Chargement…</p>;
   }
@@ -164,9 +171,22 @@ export function WorkerProfileView({
       </div>
 
       {variant === "own" ? (
-        <Link href="/travailleur/profil">
-          <Button className="mb-6 w-full">Modifier mon profil</Button>
-        </Link>
+        <div className="mb-6 flex flex-col gap-2">
+          <Link href="/travailleur/profil">
+            <Button className="w-full">Modifier mon profil</Button>
+          </Link>
+          <Link href="/travailleur/demandes">
+            <Button variant="secondary" className="w-full">
+              Mes demandes
+            </Button>
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="w-full rounded-md border border-wine-200 py-3 text-sm font-medium text-wine-700"
+          >
+            Déconnexion
+          </button>
+        </div>
       ) : (
         <Link href={`/demande/${workerId}`}>
           <Button className="mb-6 w-full">Demander une intervention</Button>
