@@ -228,7 +228,7 @@ export default function ComptePage() {
                 </Card>
               </Link>
 
-              <Link href="/travailleur/profil">
+              <Link href="/travailleur/mon-profil">
                 <Card className="flex items-center gap-3 bg-white">
                   <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
                     <Briefcase className="h-5 w-5 text-wine-600" />
