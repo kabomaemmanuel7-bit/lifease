@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { InterventionComposer } from "@/components/InterventionComposer";
 import { supabase } from "@/lib/supabase";
 
 type WorkerData = {
@@ -25,6 +25,8 @@ type PortfolioItem = {
   title: string;
   description: string | null;
   image_url: string | null;
+  video_url: string | null;
+  location: string | null;
   completed_at: string | null;
 };
 
@@ -81,7 +83,6 @@ export function WorkerProfileView({
   workerId: string;
   variant: "own" | "public";
 }) {
-  const router = useRouter();
   const [worker, setWorker] = useState<WorkerData | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [cvEntries, setCvEntries] = useState<CvEntry[]>([]);
@@ -109,7 +110,7 @@ export function WorkerProfileView({
           supabase.from("profiles").select("full_name").eq("id", workerId).single(),
           supabase
             .from("worker_portfolio")
-            .select("id, title, description, image_url, completed_at")
+            .select("id, title, description, image_url, video_url, location, completed_at")
             .eq("worker_id", workerId)
             .order("completed_at", { ascending: false }),
           supabase
@@ -136,11 +137,6 @@ export function WorkerProfileView({
 
     loadAll();
   }, [workerId]);
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.push("/connexion");
-  }
 
   if (loading) {
     return <p className="text-sm text-ink-600">Chargement…</p>;
@@ -181,24 +177,7 @@ export function WorkerProfileView({
         <Badge tone={statusTone[worker.status]}>{statusLabel[worker.status]}</Badge>
       </div>
 
-      {variant === "own" ? (
-        <div className="mb-6 flex flex-col gap-2">
-          <Link href="/travailleur/profil">
-            <Button className="w-full">Modifier mon profil</Button>
-          </Link>
-          <Link href="/travailleur/demandes">
-            <Button variant="secondary" className="w-full">
-              Mes demandes
-            </Button>
-          </Link>
-          <button
-            onClick={handleSignOut}
-            className="w-full rounded-md border border-wine-200 py-3 text-sm font-medium text-wine-700"
-          >
-            Déconnexion
-          </button>
-        </div>
-      ) : (
+      {variant === "public" && (
         <Link href={`/demande/${workerId}`}>
           <Button className="mb-6 w-full">Demander une intervention</Button>
         </Link>
@@ -315,6 +294,12 @@ export function WorkerProfileView({
 
       {tab === "interventions" && (
         <div className="flex flex-col gap-3">
+          {variant === "own" && (
+            <InterventionComposer
+              workerId={workerId}
+              onPublished={(item) => setPortfolio((prev) => [item, ...prev])}
+            />
+          )}
           {portfolio.length === 0 && (
             <p className="text-center text-sm text-ink-600">
               Aucune intervention publiée pour le moment.
@@ -332,22 +317,25 @@ export function WorkerProfileView({
                   className="h-40 w-full object-cover"
                 />
               )}
+              {item.video_url && (
+                <video src={item.video_url} controls className="h-40 w-full object-cover" />
+              )}
               <div className="p-3">
                 <p className="text-sm font-medium text-ink-900">{item.title}</p>
                 {item.description && (
                   <p className="mt-0.5 text-xs text-ink-600">{item.description}</p>
                 )}
+                {item.location && (
+                  <p className="mt-1 text-xs text-ink-600">📍 {item.location}</p>
+                )}
                 {item.completed_at && (
                   <p className="mt-1 text-xs text-ink-400">
-                    {new Date(item.completed_at).toLocaleDateString("fr-FR")}
+                    {new Date(item.completed_at).toLocaleString("fr-FR")}
                   </p>
                 )}
               </div>
             </div>
           ))}
-          <p className="text-center text-xs text-ink-400">
-            Photos/vidéos, lieu, date et avis par intervention arrivent dans la prochaine mise à jour.
-          </p>
         </div>
       )}
     </div>

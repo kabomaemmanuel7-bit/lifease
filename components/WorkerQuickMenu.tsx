@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
-const ITEMS = [
+const LINK_ITEMS = [
   { label: "Mon profil", href: "/travailleur/mon-profil" },
+  { label: "Modifier mon profil", href: "/travailleur/profil" },
   { label: "Mes commandes", href: "/travailleur/demandes" },
   { label: "Mon portefeuille", href: "/travailleur/portefeuille" },
   { label: "Tableau de bord", href: "/travailleur/tableau-de-bord" },
@@ -13,6 +16,7 @@ const ITEMS = [
 ];
 
 export function WorkerQuickMenu() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -26,6 +30,12 @@ export function WorkerQuickMenu() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  async function handleSignOut() {
+    setOpen(false);
+    await supabase.auth.signOut();
+    router.push("/connexion");
+  }
+
   return (
     <div className="relative ml-auto" ref={ref}>
       <button
@@ -38,7 +48,7 @@ export function WorkerQuickMenu() {
 
       {open && (
         <div className="absolute right-0 top-11 z-50 w-64 rounded-lg border border-beige-200 bg-white py-2 shadow-lg">
-          {ITEMS.map((item) => (
+          {LINK_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -48,6 +58,12 @@ export function WorkerQuickMenu() {
               {item.label}
             </Link>
           ))}
+          <button
+            onClick={handleSignOut}
+            className="block w-full px-4 py-2.5 text-left text-sm text-wine-700 hover:bg-beige-50"
+          >
+            Déconnexion
+          </button>
         </div>
       )}
     </div>
