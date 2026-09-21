@@ -38,6 +38,18 @@ type Slide = {
   image_url: string | null;
 };
 
+type FeedIntervention = {
+  id: string;
+  worker_id: string;
+  worker_name: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  video_url: string | null;
+  location: string | null;
+  completed_at: string | null;
+};
+
 const statusTone: Record<RecommendedWorker["status"], "success" | "warning" | "neutral"> = {
   disponible: "success",
   occupe: "warning",
@@ -73,6 +85,7 @@ export default function HomePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [recommended, setRecommended] = useState<RecommendedWorker[]>([]);
+  const [feed, setFeed] = useState<FeedIntervention[]>([]);
   const [slides, setSlides] = useState<Slide[]>(FALLBACK_SLIDES);
   const [loading, setLoading] = useState(true);
   const [slide, setSlide] = useState(0);
@@ -133,7 +146,6 @@ export default function HomePage() {
           .from("profiles")
           .select("id, full_name")
           .in("id", ids);
-
         const nameById = new Map(
           (workerProfilesData ?? []).map((p) => [p.id, p.full_name])
         );
@@ -142,6 +154,30 @@ export default function HomePage() {
           workers.map((w) => ({
             ...w,
             full_name: nameById.get(w.id) ?? "Professionnel",
+          }))
+        );
+      }
+
+      const { data: portfolioRows } = await supabase
+        .from("worker_portfolio")
+        .select("id, worker_id, title, description, image_url, video_url, location, completed_at")
+        .order("completed_at", { ascending: false })
+        .limit(10);
+
+      if (portfolioRows && portfolioRows.length > 0) {
+        const workerIds = [...new Set(portfolioRows.map((p) => p.worker_id))];
+        const { data: feedProfiles } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", workerIds);
+        const feedNameById = new Map(
+          (feedProfiles ?? []).map((p) => [p.id, p.full_name])
+        );
+
+        setFeed(
+          portfolioRows.map((p) => ({
+            ...p,
+            worker_name: feedNameById.get(p.worker_id) ?? "Professionnel",
           }))
         );
       }
@@ -221,7 +257,7 @@ export default function HomePage() {
         </div>
 
         <p className="mb-3 text-base font-medium text-ink-900">
-          Que recherchez-vous ?
+          Que recherchez-vous ?
         </p>
         <select
           defaultValue=""
@@ -266,7 +302,7 @@ export default function HomePage() {
             Voir tout
           </Link>
         </div>
-        <div className="flex flex-col gap-3">
+        <div className="mb-6 flex flex-col gap-3">
           {recommended.length === 0 && (
             <Card className="bg-white text-center text-sm text-ink-600">
               Aucun professionnel disponible pour le moment.
@@ -296,6 +332,47 @@ export default function HomePage() {
                 <Badge tone={statusTone[worker.status]}>
                   {statusLabel[worker.status]}
                 </Badge>
+              </Card>
+            </Link>
+          ))}
+        </div>
+
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-base font-medium text-ink-900">
+            Dernières interventions
+          </p>
+        </div>
+        <div className="flex flex-col gap-3">
+          {feed.length === 0 && (
+            <Card className="bg-white text-center text-sm text-ink-600">
+              Aucune intervention publiée pour le moment.
+            </Card>
+          )}
+          {feed.map((item) => (
+            <Link key={item.id} href={`/professionnel/${item.worker_id}`}>
+              <Card className="overflow-hidden bg-white p-0">
+                {item.image_url && (
+                  <img
+                    src={item.image_url}
+                    alt={item.title}
+                    className="h-40 w-full object-cover"
+                  />
+                )}
+                {!item.image_url && item.video_url && (
+                  <video src={item.video_url} className="h-40 w-full object-cover" muted />
+                )}
+                <div className="p-3">
+                  <p className="text-sm font-medium text-ink-900">{item.title}</p>
+                  <p className="text-xs text-ink-600">{item.worker_name}</p>
+                  {item.location && (
+                    <p className="mt-1 text-xs text-ink-600">📍 {item.location}</p>
+                  )}
+                  {item.completed_at && (
+                    <p className="mt-1 text-xs text-ink-400">
+                      {new Date(item.completed_at).toLocaleDateString("fr-FR")}
+                    </p>
+                  )}
+                </div>
               </Card>
             </Link>
           ))}
