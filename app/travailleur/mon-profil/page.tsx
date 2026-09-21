@@ -51,9 +51,8 @@ export default function MonProfilPage() {
   return (
     <main className="min-h-screen bg-beige-50">
       <div className="mx-auto max-w-md px-5 py-6">
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6 flex items-center justify-end">
           <WorkerQuickMenu />
-          <h1 className="text-lg font-medium text-ink-900">Mon profil</h1>
         </div>
         <WorkerProfileView workerId={userId} variant="own" />
       </div>

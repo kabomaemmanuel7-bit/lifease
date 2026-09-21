@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Star } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
@@ -29,14 +28,6 @@ type PortfolioItem = {
   completed_at: string | null;
 };
 
-type ReviewItem = {
-  id: string;
-  rating: number;
-  comment: string | null;
-  created_at: string;
-  client_name: string;
-};
-
 type CvEntry = {
   id: string;
   type: "competence" | "diplome" | "experience" | "stage" | "formation";
@@ -46,7 +37,14 @@ type CvEntry = {
   description: string | null;
 };
 
-type Tab = "cv" | "services" | "interventions" | "avis";
+type ServiceItem = {
+  id: string;
+  title: string;
+  price: number;
+  description: string | null;
+};
+
+type Tab = "cv" | "services" | "interventions";
 
 const statusLabel: Record<WorkerData["status"], string> = {
   disponible: "Disponible",
@@ -86,8 +84,8 @@ export function WorkerProfileView({
   const router = useRouter();
   const [worker, setWorker] = useState<WorkerData | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
-  const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [cvEntries, setCvEntries] = useState<CvEntry[]>([]);
+  const [services, setServices] = useState<ServiceItem[]>([]);
   const [tab, setTab] = useState<Tab>("cv");
   const [loading, setLoading] = useState(true);
 
@@ -106,7 +104,7 @@ export function WorkerProfileView({
         return;
       }
 
-      const [{ data: profile }, { data: portfolioData }, { data: reviewRows }, { data: cvRows }] =
+      const [{ data: profile }, { data: portfolioData }, { data: cvRows }, { data: serviceRows }] =
         await Promise.all([
           supabase.from("profiles").select("full_name").eq("id", workerId).single(),
           supabase
@@ -115,43 +113,24 @@ export function WorkerProfileView({
             .eq("worker_id", workerId)
             .order("completed_at", { ascending: false }),
           supabase
-            .from("reviews")
-            .select("id, rating, comment, created_at, client_id")
-            .eq("worker_id", workerId)
-            .order("created_at", { ascending: false }),
-          supabase
             .from("worker_cv_entries")
             .select("id, type, title, institution, period, description")
             .eq("worker_id", workerId)
             .order("created_at", { ascending: false }),
+          supabase
+            .from("worker_services")
+            .select("id, title, price, description")
+            .eq("worker_id", workerId)
+            .order("created_at", { ascending: false }),
         ]);
-
-      let reviewsWithNames: ReviewItem[] = [];
-      if (reviewRows && reviewRows.length > 0) {
-        const clientIds = reviewRows.map((r) => r.client_id);
-        const { data: clientProfiles } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", clientIds);
-        const nameById = new Map(
-          (clientProfiles ?? []).map((p) => [p.id, p.full_name])
-        );
-        reviewsWithNames = reviewRows.map((r) => ({
-          id: r.id,
-          rating: r.rating,
-          comment: r.comment,
-          created_at: r.created_at,
-          client_name: nameById.get(r.client_id) ?? "Client",
-        }));
-      }
 
       setWorker({
         ...workerProfile,
         full_name: profile?.full_name ?? "Professionnel",
       });
       setPortfolio(portfolioData ?? []);
-      setReviews(reviewsWithNames);
       setCvEntries(cvRows ?? []);
+      setServices(serviceRows ?? []);
       setLoading(false);
     }
 
@@ -207,11 +186,6 @@ export function WorkerProfileView({
           <Link href="/travailleur/profil">
             <Button className="w-full">Modifier mon profil</Button>
           </Link>
-          <Link href="/travailleur/cv">
-            <Button variant="secondary" className="w-full">
-              Modifier mon CV
-            </Button>
-          </Link>
           <Link href="/travailleur/demandes">
             <Button variant="secondary" className="w-full">
               Mes demandes
@@ -236,13 +210,12 @@ export function WorkerProfileView({
             { id: "cv", label: "CV" },
             { id: "services", label: "Services" },
             { id: "interventions", label: "Interventions" },
-            { id: "avis", label: "Avis" },
           ] as { id: Tab; label: string }[]
         ).map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 border-b-2 pb-2 text-xs font-medium ${
+            className={`flex-1 border-b-2 pb-2 text-sm font-medium ${
               tab === t.id
                 ? "border-wine-600 text-wine-600"
                 : "border-transparent text-ink-600"
@@ -255,6 +228,13 @@ export function WorkerProfileView({
 
       {tab === "cv" && (
         <div className="flex flex-col gap-5">
+          {variant === "own" && (
+            <Link href="/travailleur/cv">
+              <Button variant="secondary" className="w-full">
+                Modifier mon CV
+              </Button>
+            </Link>
+          )}
           {cvEntries.length === 0 && (
             <p className="text-center text-sm text-ink-600">
               Aucune information de CV renseignée pour le moment.
@@ -304,31 +284,32 @@ export function WorkerProfileView({
       )}
 
       {tab === "services" && (
-        <div>
-          {worker.zone && (
-            <p className="mb-4 text-sm text-ink-600">
-              Zone d'intervention : {worker.zone}
+        <div className="flex flex-col gap-3">
+          {variant === "own" && (
+            <Link href="/travailleur/services">
+              <Button variant="secondary" className="w-full">
+                Gérer mes services
+              </Button>
+            </Link>
+          )}
+          {services.length === 0 && (
+            <p className="text-center text-sm text-ink-600">
+              Aucun service renseigné pour le moment.
             </p>
           )}
-          {worker.bio && (
-            <div className="mb-5">
-              <p className="mb-1 text-sm font-medium text-ink-600">Biographie</p>
-              <p className="whitespace-pre-line text-sm text-ink-900">{worker.bio}</p>
+          {services.map((s) => (
+            <div key={s.id} className="rounded-md border border-wine-100 bg-white p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-ink-900">{s.title}</p>
+                <p className="text-sm font-medium text-wine-600">
+                  {s.price.toLocaleString("fr-FR")} FCFA
+                </p>
+              </div>
+              {s.description && (
+                <p className="mt-1 text-xs text-ink-600">{s.description}</p>
+              )}
             </div>
-          )}
-          <div className="mb-5">
-            <p className="mb-1 text-sm font-medium text-ink-600">Expérience</p>
-            <p className="text-sm text-ink-900">{worker.experience_years} ans</p>
-          </div>
-          {worker.description && (
-            <div className="mb-5">
-              <p className="mb-1 text-sm font-medium text-ink-600">À propos</p>
-              <p className="text-sm text-ink-900">{worker.description}</p>
-            </div>
-          )}
-          <p className="text-center text-xs text-ink-400">
-            La liste des services tarifés arrive dans une prochaine mise à jour.
-          </p>
+          ))}
         </div>
       )}
 
@@ -364,31 +345,9 @@ export function WorkerProfileView({
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {tab === "avis" && (
-        <div className="flex flex-col gap-3">
-          {reviews.length === 0 && (
-            <p className="text-center text-sm text-ink-600">Aucun avis pour le moment.</p>
-          )}
-          {reviews.map((review) => (
-            <div key={review.id} className="rounded-md border border-wine-100 bg-white p-3">
-              <div className="mb-1 flex items-center justify-between">
-                <p className="text-sm font-medium text-ink-900">{review.client_name}</p>
-                <span className="flex items-center gap-1 text-xs text-ink-600">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                  {review.rating}
-                </span>
-              </div>
-              {review.comment && (
-                <p className="text-sm text-ink-600">{review.comment}</p>
-              )}
-              <p className="mt-1 text-xs text-ink-400">
-                {new Date(review.created_at).toLocaleDateString("fr-FR")}
-              </p>
-            </div>
-          ))}
+          <p className="text-center text-xs text-ink-400">
+            Photos/vidéos, lieu, date et avis par intervention arrivent dans la prochaine mise à jour.
+          </p>
         </div>
       )}
     </div>
