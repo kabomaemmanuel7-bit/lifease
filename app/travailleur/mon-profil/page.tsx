@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { WorkerQuickMenu } from "@/components/WorkerQuickMenu";
 import { WorkerProfileView } from "@/components/WorkerProfileView";
 import { supabase } from "@/lib/supabase";
 
@@ -52,9 +52,7 @@ export default function MonProfilPage() {
     <main className="min-h-screen bg-beige-50">
       <div className="mx-auto max-w-md px-5 py-6">
         <div className="mb-6 flex items-center gap-3">
-          <button onClick={() => router.back()} aria-label="Retour">
-            <ChevronLeft className="h-5 w-5 text-ink-900" />
-          </button>
+          <WorkerQuickMenu />
           <h1 className="text-lg font-medium text-ink-900">Mon profil</h1>
         </div>
         <WorkerProfileView workerId={userId} variant="own" />
