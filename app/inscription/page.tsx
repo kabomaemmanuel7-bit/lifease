@@ -40,28 +40,24 @@ export default function InscriptionPage() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          role,
+          full_name: fullName,
+        },
+      },
     });
 
     if (signUpError) {
-      setError(signUpError.message);
+      setError(traduireErreur(signUpError.message));
       setLoading(false);
       return;
     }
 
-    if (data.user) {
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: data.user.id,
-        role,
-        full_name: fullName,
-      });
-
-      if (profileError) {
-        setError(
-          "Compte créé, mais une erreur est survenue lors de la création du profil."
-        );
-        setLoading(false);
-        return;
-      }
+    if (!data.user) {
+      setError("Une erreur est survenue. Réessayez.");
+      setLoading(false);
+      return;
     }
 
     setLoading(false);
