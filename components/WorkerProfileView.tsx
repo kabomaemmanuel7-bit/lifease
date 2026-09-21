@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { InterventionComposer } from "@/components/InterventionComposer";
+import { InterventionCard } from "@/components/InterventionCard";
 import { supabase } from "@/lib/supabase";
 
 type WorkerData = {
@@ -25,6 +26,7 @@ type PortfolioItem = {
   title: string;
   description: string | null;
   image_url: string | null;
+  image_urls: string[] | null;
   video_url: string | null;
   location: string | null;
   completed_at: string | null;
@@ -110,7 +112,7 @@ export function WorkerProfileView({
           supabase.from("profiles").select("full_name").eq("id", workerId).single(),
           supabase
             .from("worker_portfolio")
-            .select("id, title, description, image_url, video_url, location, completed_at")
+            .select("id, title, description, image_url, image_urls, video_url, location, completed_at")
             .eq("worker_id", workerId)
             .order("completed_at", { ascending: false }),
           supabase
@@ -297,7 +299,9 @@ export function WorkerProfileView({
           {variant === "own" && (
             <InterventionComposer
               workerId={workerId}
-              onPublished={(item) => setPortfolio((prev) => [item, ...prev])}
+              onPublished={(item) =>
+                setPortfolio((prev) => [{ ...item, image_urls: item.image_urls ?? [] }, ...prev])
+              }
             />
           )}
           {portfolio.length === 0 && (
@@ -306,35 +310,16 @@ export function WorkerProfileView({
             </p>
           )}
           {portfolio.map((item) => (
-            <div
+            <InterventionCard
               key={item.id}
-              className="overflow-hidden rounded-md border border-wine-100 bg-white"
-            >
-              {item.image_url && (
-                <img
-                  src={item.image_url}
-                  alt={item.title}
-                  className="h-40 w-full object-cover"
-                />
-              )}
-              {item.video_url && (
-                <video src={item.video_url} controls className="h-40 w-full object-cover" />
-              )}
-              <div className="p-3">
-                <p className="text-sm font-medium text-ink-900">{item.title}</p>
-                {item.description && (
-                  <p className="mt-0.5 text-xs text-ink-600">{item.description}</p>
-                )}
-                {item.location && (
-                  <p className="mt-1 text-xs text-ink-600">📍 {item.location}</p>
-                )}
-                {item.completed_at && (
-                  <p className="mt-1 text-xs text-ink-400">
-                    {new Date(item.completed_at).toLocaleString("fr-FR")}
-                  </p>
-                )}
-              </div>
-            </div>
+              id={item.id}
+              title={item.title}
+              description={item.description}
+              imageUrls={item.image_urls?.length ? item.image_urls : item.image_url ? [item.image_url] : []}
+              videoUrl={item.video_url}
+              location={item.location}
+              completedAt={item.completed_at}
+            />
           ))}
         </div>
       )}

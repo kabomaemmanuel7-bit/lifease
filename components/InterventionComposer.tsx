@@ -10,6 +10,7 @@ type NewPortfolioItem = {
   title: string;
   description: string | null;
   image_url: string | null;
+  image_urls: string[];
   video_url: string | null;
   location: string | null;
   completed_at: string | null;
@@ -26,12 +27,12 @@ export function InterventionComposer({
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  async function uploadFile(file: File, kind: "photo" | "video") {
+  async function uploadFile(file: File, kind: string) {
     const ext = file.name.split(".").pop();
     const path = `${workerId}/${Date.now()}-${kind}.${ext}`;
     const { error: uploadError } = await supabase.storage
@@ -49,10 +50,12 @@ export function InterventionComposer({
     setError("");
 
     try {
-      let imageUrl: string | null = null;
-      let videoUrl: string | null = null;
+      const imageUrls: string[] = [];
+      for (let i = 0; i < photoFiles.length; i++) {
+        imageUrls.push(await uploadFile(photoFiles[i], `photo-${i}`));
+      }
 
-      if (photoFile) imageUrl = await uploadFile(photoFile, "photo");
+      let videoUrl: string | null = null;
       if (videoFile) videoUrl = await uploadFile(videoFile, "video");
 
       const { data, error: insertError } = await supabase
@@ -61,12 +64,13 @@ export function InterventionComposer({
           worker_id: workerId,
           title: title.trim(),
           description: description.trim() || null,
-          image_url: imageUrl,
+          image_url: imageUrls[0] ?? null,
+          image_urls: imageUrls,
           video_url: videoUrl,
           location: location.trim() || null,
           completed_at: date ? new Date(date).toISOString() : new Date().toISOString(),
         })
-        .select("id, title, description, image_url, video_url, location, completed_at")
+        .select("id, title, description, image_url, image_urls, video_url, location, completed_at")
         .single();
 
       if (insertError) throw insertError;
@@ -76,7 +80,7 @@ export function InterventionComposer({
       setDescription("");
       setLocation("");
       setDate("");
-      setPhotoFile(null);
+      setPhotoFiles([]);
       setVideoFile(null);
     } catch {
       setError("Une erreur est survenue, réessaie.");
@@ -115,13 +119,20 @@ export function InterventionComposer({
         onChange={(e) => setDate(e.target.value)}
         className="mb-4 w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
       />
-      <label className="mb-1.5 block text-sm font-medium text-ink-900">Photo</label>
+      <label className="mb-1.5 block text-sm font-medium text-ink-900">
+        Photos (plusieurs possibles)
+      </label>
       <input
         type="file"
         accept="image/*"
-        onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
-        className="mb-4 w-full text-sm text-ink-600"
+        multiple
+        onChange={(e) => setPhotoFiles(Array.from(e.target.files ?? []))}
+        className="mb-1 w-full text-sm text-ink-600"
       />
+      {photoFiles.length > 0 && (
+        <p className="mb-4 text-xs text-ink-400">{photoFiles.length} photo(s) sélectionnée(s)</p>
+      )}
+      {photoFiles.length === 0 && <div className="mb-4" />}
       <label className="mb-1.5 block text-sm font-medium text-ink-900">Vidéo (optionnel)</label>
       <input
         type="file"
