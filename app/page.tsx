@@ -7,6 +7,7 @@ import { Star } from "lucide-react";
 import { NavMenu } from "@/components/NavMenu";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { InterventionCard } from "@/components/InterventionCard";
 import { supabase } from "@/lib/supabase";
 
 type Profile = {
@@ -44,6 +45,7 @@ type FeedIntervention = {
   title: string;
   description: string | null;
   image_url: string | null;
+  image_urls: string[] | null;
   video_url: string | null;
   location: string | null;
   completed_at: string | null;
@@ -117,8 +119,7 @@ export default function HomePage() {
           supabase
             .from("services")
             .select("id, slug, name, icon")
-            .order("name")
-            .limit(4),
+            .order("name"),
           supabase
             .from("banner_slides")
             .select("image_url, title, subtitle")
@@ -159,7 +160,7 @@ export default function HomePage() {
 
       const { data: portfolioRows } = await supabase
         .from("worker_portfolio")
-        .select("id, worker_id, title, description, image_url, video_url, location, completed_at")
+        .select("id, worker_id, title, description, image_url, image_urls, video_url, location, completed_at")
         .order("completed_at", { ascending: false })
         .limit(10);
 
@@ -328,32 +329,17 @@ export default function HomePage() {
             </Card>
           )}
           {feed.map((item) => (
-            <Link key={item.id} href={`/professionnel/${item.worker_id}`}>
-              <Card className="overflow-hidden bg-white p-0">
-                {item.image_url && (
-                  <img
-                    src={item.image_url}
-                    alt={item.title}
-                    className="h-40 w-full object-cover"
-                  />
-                )}
-                {!item.image_url && item.video_url && (
-                  <video src={item.video_url} className="h-40 w-full object-cover" muted />
-                )}
-                <div className="p-3">
-                  <p className="text-sm font-medium text-ink-900">{item.title}</p>
-                  <p className="text-xs text-ink-600">{item.worker_name}</p>
-                  {item.location && (
-                    <p className="mt-1 text-xs text-ink-600">📍 {item.location}</p>
-                  )}
-                  {item.completed_at && (
-                    <p className="mt-1 text-xs text-ink-400">
-                      {new Date(item.completed_at).toLocaleDateString("fr-FR")}
-                    </p>
-                  )}
-                </div>
-              </Card>
-            </Link>
+            <InterventionCard
+              key={item.id}
+              id={item.id}
+              title={item.title}
+              description={item.description}
+              imageUrls={item.image_urls?.length ? item.image_urls : item.image_url ? [item.image_url] : []}
+              videoUrl={item.video_url}
+              location={item.location}
+              completedAt={item.completed_at}
+              workerName={item.worker_name}
+            />
           ))}
         </div>
       </div>
