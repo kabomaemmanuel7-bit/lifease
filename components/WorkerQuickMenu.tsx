@@ -27,7 +27,7 @@ export function WorkerQuickMenu() {
   }, []);
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative ml-auto" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex h-9 w-9 items-center justify-center rounded-md text-ink-900"
@@ -37,7 +37,7 @@ export function WorkerQuickMenu() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-11 z-50 w-64 rounded-lg border border-beige-200 bg-white py-2 shadow-lg">
+        <div className="absolute right-0 top-11 z-50 w-64 rounded-lg border border-beige-200 bg-white py-2 shadow-lg">
           {ITEMS.map((item) => (
             <Link
               key={item.href}
