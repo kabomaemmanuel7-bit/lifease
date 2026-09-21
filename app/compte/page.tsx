@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Briefcase, ClipboardList, MapPin, Phone, Mail } from "lucide-react";
+import { ChevronLeft, MapPin, Phone, Mail } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { supabase } from "@/lib/supabase";
 
@@ -15,27 +15,12 @@ type Profile = {
   role: "client" | "travailleur" | "admin";
 };
 
-type WorkerProfile = {
-  metier: string;
-  status: "disponible" | "occupe" | "indisponible";
-  rating: number | null;
-  rating_count: number | null;
-  zone: string | null;
-  experience_years: number | null;
-};
-
 type RequestCounts = {
   total: number;
   en_attente: number;
   acceptee: number;
   terminee: number;
   refusee: number;
-};
-
-const STATUS_LABEL: Record<WorkerProfile["status"], string> = {
-  disponible: "Disponible",
-  occupe: "Occupé",
-  indisponible: "Indisponible",
 };
 
 function tallyStatuses(rows: { status: string }[]): RequestCounts {
@@ -59,7 +44,6 @@ export default function ComptePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [email, setEmail] = useState<string | null>(null);
-  const [workerProfile, setWorkerProfile] = useState<WorkerProfile | null>(null);
   const [counts, setCounts] = useState<RequestCounts>({
     total: 0,
     en_attente: 0,
@@ -88,31 +72,19 @@ export default function ComptePage() {
         .eq("id", user.id)
         .single();
 
-      setProfile(profileData);
-
       if (profileData?.role === "travailleur") {
-        const { data: workerData } = await supabase
-          .from("worker_profiles")
-          .select("metier, status, rating, rating_count, zone, experience_years")
-          .eq("id", user.id)
-          .single();
-        setWorkerProfile(workerData);
-
-        const { data: requestRows } = await supabase
-          .from("requests")
-          .select("status")
-          .eq("worker_id", user.id);
-
-        setCounts(tallyStatuses(requestRows ?? []));
-      } else {
-        const { data: requestRows } = await supabase
-          .from("requests")
-          .select("status")
-          .eq("client_id", user.id);
-
-        setCounts(tallyStatuses(requestRows ?? []));
+        router.push("/travailleur/mon-profil");
+        return;
       }
 
+      setProfile(profileData);
+
+      const { data: requestRows } = await supabase
+        .from("requests")
+        .select("status")
+        .eq("client_id", user.id);
+
+      setCounts(tallyStatuses(requestRows ?? []));
       setLoading(false);
     }
 
@@ -150,9 +122,7 @@ export default function ComptePage() {
           </div>
           <div>
             <p className="text-base font-medium text-ink-900">{profile.full_name}</p>
-            <p className="text-sm text-ink-600">
-              {profile.role === "travailleur" ? "Compte professionnel" : "Compte client"}
-            </p>
+            <p className="text-sm text-ink-600">Compte client</p>
           </div>
         </Card>
 
@@ -175,101 +145,31 @@ export default function ComptePage() {
           )}
         </Card>
 
-        {profile.role === "travailleur" ? (
-          <>
-            <p className="mb-3 text-sm font-medium text-ink-600">Tableau de bord</p>
-            <div className="mb-6 grid grid-cols-2 gap-3">
-              <Card className="bg-white text-center">
-                <p className="text-2xl font-semibold text-wine-600">{counts.total}</p>
-                <p className="text-xs text-ink-600">Demandes reçues</p>
-              </Card>
-              <Card className="bg-white text-center">
-                <p className="text-2xl font-semibold text-wine-600">
-                  {workerProfile?.rating ? workerProfile.rating.toFixed(1) : "—"} ★
-                </p>
-                <p className="text-xs text-ink-600">
-                  {workerProfile?.rating_count ?? 0} avis
-                </p>
-              </Card>
-              <Card className="bg-white text-center">
-                <p className="text-2xl font-semibold text-wine-600">{counts.terminee}</p>
-                <p className="text-xs text-ink-600">Missions terminées</p>
-              </Card>
-              <Card className="bg-white text-center">
-                <p className="text-2xl font-semibold text-wine-600">{counts.en_attente}</p>
-                <p className="text-xs text-ink-600">En attente</p>
-              </Card>
-            </div>
+        <p className="mb-3 text-sm font-medium text-ink-600">Mon parcours</p>
+        <div className="mb-6 grid grid-cols-2 gap-3">
+          <Card className="bg-white text-center">
+            <p className="text-2xl font-semibold text-wine-600">{counts.total}</p>
+            <p className="text-xs text-ink-600">Demandes envoyées</p>
+          </Card>
+          <Card className="bg-white text-center">
+            <p className="text-2xl font-semibold text-wine-600">{counts.terminee}</p>
+            <p className="text-xs text-ink-600">Interventions terminées</p>
+          </Card>
+          <Card className="bg-white text-center">
+            <p className="text-2xl font-semibold text-wine-600">{counts.en_attente}</p>
+            <p className="text-xs text-ink-600">En attente</p>
+          </Card>
+          <Card className="bg-white text-center">
+            <p className="text-2xl font-semibold text-wine-600">{counts.acceptee}</p>
+            <p className="text-xs text-ink-600">Acceptées</p>
+          </Card>
+        </div>
 
-            {workerProfile && (
-              <Card className="mb-6 bg-white">
-                <p className="mb-1 text-sm font-medium text-ink-900">{workerProfile.metier}</p>
-                <p className="text-xs text-ink-600">
-                  {STATUS_LABEL[workerProfile.status]}
-                  {workerProfile.zone ? ` · ${workerProfile.zone}` : ""}
-                  {workerProfile.experience_years
-                    ? ` · ${workerProfile.experience_years} an(s) d'expérience`
-                    : ""}
-                </p>
-              </Card>
-            )}
-
-            <p className="mb-3 text-sm font-medium text-ink-600">Outils</p>
-            <div className="mb-6 flex flex-col gap-3">
-              <Link href="/travailleur/demandes">
-                <Card className="flex items-center gap-3 bg-white">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
-                    <ClipboardList className="h-5 w-5 text-wine-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-ink-900">Mes demandes</p>
-                    <p className="text-xs text-ink-600">Voir et répondre aux demandes reçues</p>
-                  </div>
-                </Card>
-              </Link>
-
-              <Link href="/travailleur/mon-profil">
-                <Card className="flex items-center gap-3 bg-white">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
-                    <Briefcase className="h-5 w-5 text-wine-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-ink-900">Mon profil professionnel</p>
-                    <p className="text-xs text-ink-600">Métier, compétences, statut, disponibilité</p>
-                  </div>
-                </Card>
-              </Link>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="mb-3 text-sm font-medium text-ink-600">Mon parcours</p>
-            <div className="mb-6 grid grid-cols-2 gap-3">
-              <Card className="bg-white text-center">
-                <p className="text-2xl font-semibold text-wine-600">{counts.total}</p>
-                <p className="text-xs text-ink-600">Demandes envoyées</p>
-              </Card>
-              <Card className="bg-white text-center">
-                <p className="text-2xl font-semibold text-wine-600">{counts.terminee}</p>
-                <p className="text-xs text-ink-600">Interventions terminées</p>
-              </Card>
-              <Card className="bg-white text-center">
-                <p className="text-2xl font-semibold text-wine-600">{counts.en_attente}</p>
-                <p className="text-xs text-ink-600">En attente</p>
-              </Card>
-              <Card className="bg-white text-center">
-                <p className="text-2xl font-semibold text-wine-600">{counts.acceptee}</p>
-                <p className="text-xs text-ink-600">Acceptées</p>
-              </Card>
-            </div>
-
-            <Link href="/recherche">
-              <Card className="mb-6 bg-white text-center text-sm font-medium text-wine-600">
-                Trouver un nouveau professionnel
-              </Card>
-            </Link>
-          </>
-        )}
+        <Link href="/recherche">
+          <Card className="mb-6 bg-white text-center text-sm font-medium text-wine-600">
+            Trouver un nouveau professionnel
+          </Card>
+        </Link>
 
         <button
           onClick={handleSignOut}

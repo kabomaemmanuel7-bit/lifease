@@ -174,7 +174,7 @@ export default function HomePage() {
             </span>
           </div>
           <Link
-            href="/compte"
+            href={profile?.role === "travailleur" ? "/travailleur/mon-profil" : "/compte"}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-600 text-sm font-medium text-white"
             aria-label="Mon compte"
           >
