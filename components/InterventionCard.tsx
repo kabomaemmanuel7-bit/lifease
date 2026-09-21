@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart, MessageCircle, Send } from "lucide-react";
+import { Heart, MessageCircle, Send, Link2, Pencil, Check, X } from "lucide-react";
 import { InterventionCarousel } from "@/components/InterventionCarousel";
 import { supabase } from "@/lib/supabase";
 
@@ -21,6 +21,8 @@ export function InterventionCard({
   location,
   completedAt,
   workerName,
+  isOwner = false,
+  onUpdated,
 }: {
   id: string;
   title: string;
@@ -30,6 +32,8 @@ export function InterventionCard({
   location: string | null;
   completedAt: string | null;
   workerName?: string;
+  isOwner?: boolean;
+  onUpdated?: (fields: { title: string; description: string | null; location: string | null }) => void;
 }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
@@ -38,6 +42,13 @@ export function InterventionCard({
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [sending, setSending] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(title);
+  const [editDescription, setEditDescription] = useState(description ?? "");
+  const [editLocation, setEditLocation] = useState(location ?? "");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -128,18 +139,110 @@ export function InterventionCard({
     }
   }
 
+  async function handleCopyLink() {
+    const url = `${window.location.origin}/intervention/${id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // silencieux : le navigateur a refusé l'accès au presse-papier
+    }
+  }
+
+  async function handleSaveEdit() {
+    if (!editTitle.trim()) return;
+    setSavingEdit(true);
+    const { error } = await supabase
+      .from("worker_portfolio")
+      .update({
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        location: editLocation.trim() || null,
+      })
+      .eq("id", id);
+    setSavingEdit(false);
+
+    if (!error) {
+      onUpdated?.({
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        location: editLocation.trim() || null,
+      });
+      setEditing(false);
+    }
+  }
+
   return (
     <div className="overflow-hidden rounded-md border border-wine-100 bg-white">
       <InterventionCarousel imageUrls={imageUrls} videoUrl={videoUrl} />
       <div className="p-3">
-        <p className="text-sm font-medium text-ink-900">{title}</p>
-        {workerName && <p className="text-xs text-ink-600">{workerName}</p>}
-        {description && <p className="mt-0.5 text-xs text-ink-600">{description}</p>}
-        {location && <p className="mt-1 text-xs text-ink-600">📍 {location}</p>}
-        {completedAt && (
-          <p className="mt-1 text-xs text-ink-400">
-            {new Date(completedAt).toLocaleDateString("fr-FR")}
-          </p>
+        {editing ? (
+          <div className="flex flex-col gap-2">
+            <input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="rounded-md border border-wine-100 px-3 py-2 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
+              placeholder="Titre"
+            />
+            <textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              rows={2}
+              className="rounded-md border border-wine-100 px-3 py-2 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
+              placeholder="Description"
+            />
+            <input
+              value={editLocation}
+              onChange={(e) => setEditLocation(e.target.value)}
+              className="rounded-md border border-wine-100 px-3 py-2 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
+              placeholder="Lieu"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveEdit}
+                disabled={savingEdit}
+                className="flex flex-1 items-center justify-center gap-1 rounded-md bg-wine-600 py-2 text-xs font-medium text-white"
+              >
+                <Check className="h-3.5 w-3.5" />
+                {savingEdit ? "Enregistrement…" : "Enregistrer"}
+              </button>
+              <button
+                onClick={() => {
+                  setEditing(false);
+                  setEditTitle(title);
+                  setEditDescription(description ?? "");
+                  setEditLocation(location ?? "");
+                }}
+                className="flex items-center justify-center gap-1 rounded-md border border-wine-200 px-3 py-2 text-xs font-medium text-wine-700"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-ink-900">{editTitle}</p>
+              {isOwner && (
+                <button
+                  onClick={() => setEditing(true)}
+                  aria-label="Modifier"
+                  className="shrink-0 text-ink-400"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {workerName && <p className="text-xs text-ink-600">{workerName}</p>}
+            {editDescription && <p className="mt-0.5 text-xs text-ink-600">{editDescription}</p>}
+            {editLocation && <p className="mt-1 text-xs text-ink-600">📍 {editLocation}</p>}
+            {completedAt && (
+              <p className="mt-1 text-xs text-ink-400">
+                {new Date(completedAt).toLocaleDateString("fr-FR")}
+              </p>
+            )}
+          </>
         )}
 
         <div className="mt-3 flex items-center gap-4 border-t border-beige-100 pt-2">
@@ -160,6 +263,14 @@ export function InterventionCard({
           >
             <MessageCircle className="h-4 w-4" />
             {comments.length > 0 ? comments.length : ""}
+          </button>
+          <button
+            onClick={handleCopyLink}
+            className="ml-auto flex items-center gap-1 text-xs text-ink-600"
+            aria-label="Copier le lien"
+          >
+            <Link2 className="h-4 w-4" />
+            {copied ? "Copié !" : ""}
           </button>
         </div>
 

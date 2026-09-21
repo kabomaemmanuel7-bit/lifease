@@ -319,6 +319,12 @@ export function WorkerProfileView({
               videoUrl={item.video_url}
               location={item.location}
               completedAt={item.completed_at}
+              isOwner={variant === "own"}
+              onUpdated={(fields) =>
+                setPortfolio((prev) =>
+                  prev.map((p) => (p.id === item.id ? { ...p, ...fields } : p))
+                )
+              }
             />
           ))}
         </div>
