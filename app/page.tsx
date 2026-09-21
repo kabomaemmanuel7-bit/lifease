@@ -8,7 +8,6 @@ import { NavMenu } from "@/components/NavMenu";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { supabase } from "@/lib/supabase";
-import { getServiceIcon } from "@/lib/icons";
 
 type Profile = {
   full_name: string;
@@ -273,26 +272,6 @@ export default function HomePage() {
             </option>
           ))}
         </select>
-
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-medium text-ink-600">Services</p>
-          <Link href="/services" className="text-sm font-medium text-wine-600">
-            Voir tout
-          </Link>
-        </div>
-        <div className="mb-6 grid grid-cols-2 gap-3">
-          {services.map((s) => {
-            const Icon = getServiceIcon(s.icon);
-            return (
-              <Link key={s.id} href={`/recherche?service=${s.slug}`}>
-                <Card className="flex items-center gap-2 bg-white text-sm text-ink-900">
-                  <Icon className="h-4 w-4 text-wine-600" />
-                  {s.name}
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
 
         <div className="mb-3 flex items-center justify-between">
           <p className="text-base font-medium text-ink-900">
