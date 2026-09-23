@@ -1,4 +1,4 @@
-const CACHE_NAME = "lifease-v1";
+const CACHE_NAME = "lifease-v2";
 const OFFLINE_URLS = ["/"];
 
 self.addEventListener("install", (event) => {
