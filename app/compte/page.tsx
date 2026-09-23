@@ -205,6 +205,7 @@ export default function ComptePage() {
               <Card className="bg-white text-center">
                 <p className="text-2xl font-semibold text-wine-600">{counts.acceptee}</p>
                 <p className="text-xs text-ink-600">Acceptées</p>
+              </Card>
             </div>
 
             <Link href="/recherche">
