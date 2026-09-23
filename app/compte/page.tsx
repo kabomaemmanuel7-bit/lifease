@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, MapPin, Phone, Mail } from "lucide-react";
+import { ChevronLeft, MapPin, Phone, Mail, Image as ImageIcon, Wrench } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { supabase } from "@/lib/supabase";
 
@@ -79,12 +79,15 @@ export default function ComptePage() {
 
       setProfile(profileData);
 
-      const { data: requestRows } = await supabase
-        .from("requests")
-        .select("status")
-        .eq("client_id", user.id);
+      if (profileData?.role !== "admin") {
+        const { data: requestRows } = await supabase
+          .from("requests")
+          .select("status")
+          .eq("client_id", user.id);
 
-      setCounts(tallyStatuses(requestRows ?? []));
+        setCounts(tallyStatuses(requestRows ?? []));
+      }
+
       setLoading(false);
     }
 
@@ -105,6 +108,7 @@ export default function ComptePage() {
   }
 
   const initiale = profile.full_name?.charAt(0).toUpperCase() || "?";
+  const isAdmin = profile.role === "admin";
 
   return (
     <main className="min-h-screen bg-beige-50">
@@ -122,7 +126,9 @@ export default function ComptePage() {
           </div>
           <div>
             <p className="text-base font-medium text-ink-900">{profile.full_name}</p>
-            <p className="text-sm text-ink-600">Compte client</p>
+            <p className="text-sm text-ink-600">
+              {isAdmin ? "Compte administrateur" : "Compte client"}
+            </p>
           </div>
         </Card>
 
@@ -145,31 +151,69 @@ export default function ComptePage() {
           )}
         </Card>
 
-        <p className="mb-3 text-sm font-medium text-ink-600">Mon parcours</p>
-        <div className="mb-6 grid grid-cols-2 gap-3">
-          <Card className="bg-white text-center">
-            <p className="text-2xl font-semibold text-wine-600">{counts.total}</p>
-            <p className="text-xs text-ink-600">Demandes envoyées</p>
-          </Card>
-          <Card className="bg-white text-center">
-            <p className="text-2xl font-semibold text-wine-600">{counts.terminee}</p>
-            <p className="text-xs text-ink-600">Interventions terminées</p>
-          </Card>
-          <Card className="bg-white text-center">
-            <p className="text-2xl font-semibold text-wine-600">{counts.en_attente}</p>
-            <p className="text-xs text-ink-600">En attente</p>
-          </Card>
-          <Card className="bg-white text-center">
-            <p className="text-2xl font-semibold text-wine-600">{counts.acceptee}</p>
-            <p className="text-xs text-ink-600">Acceptées</p>
-          </Card>
-        </div>
+        {isAdmin ? (
+          <>
+            <p className="mb-3 text-sm font-medium text-ink-600">Administration</p>
+            <div className="mb-6 flex flex-col gap-3">
+              <Link href="/admin/bannieres">
+                <Card className="flex items-center gap-3 bg-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
+                    <ImageIcon className="h-5 w-5 text-wine-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink-900">
+                      Gérer la bannière d'accueil
+                    </p>
+                    <p className="text-xs text-ink-600">
+                      Ajouter, modifier ou supprimer les images du carrousel
+                    </p>
+                  </div>
+                </Card>
+              </Link>
 
-        <Link href="/recherche">
-          <Card className="mb-6 bg-white text-center text-sm font-medium text-wine-600">
-            Trouver un nouveau professionnel
-          </Card>
-        </Link>
+              <Link href="/admin/services">
+                <Card className="flex items-center gap-3 bg-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
+                    <Wrench className="h-5 w-5 text-wine-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink-900">Gérer les services</p>
+                    <p className="text-xs text-ink-600">
+                      Ajouter, modifier ou supprimer les catégories de métiers
+                    </p>
+                  </div>
+                </Card>
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mb-3 text-sm font-medium text-ink-600">Mon parcours</p>
+            <div className="mb-6 grid grid-cols-2 gap-3">
+              <Card className="bg-white text-center">
+                <p className="text-2xl font-semibold text-wine-600">{counts.total}</p>
+                <p className="text-xs text-ink-600">Demandes envoyées</p>
+              </Card>
+              <Card className="bg-white text-center">
+                <p className="text-2xl font-semibold text-wine-600">{counts.terminee}</p>
+                <p className="text-xs text-ink-600">Interventions terminées</p>
+              </Card>
+              <Card className="bg-white text-center">
+                <p className="text-2xl font-semibold text-wine-600">{counts.en_attente}</p>
+                <p className="text-xs text-ink-600">En attente</p>
+              </Card>
+              <Card className="bg-white text-center">
+                <p className="text-2xl font-semibold text-wine-600">{counts.acceptee}</p>
+                <p className="text-xs text-ink-600">Acceptées</p>
+            </div>
+
+            <Link href="/recherche">
+              <Card className="mb-6 bg-white text-center text-sm font-medium text-wine-600">
+                Trouver un nouveau professionnel
+              </Card>
+            </Link>
+          </>
+        )}
 
         <button
           onClick={handleSignOut}
