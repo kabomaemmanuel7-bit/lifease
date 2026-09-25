@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Star } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { InterventionComposer } from "@/components/InterventionComposer";
-import { InterventionCard } from "@/components/InterventionCard";
 import { supabase } from "@/lib/supabase";
 
 type WorkerData = {
@@ -26,29 +26,18 @@ type PortfolioItem = {
   title: string;
   description: string | null;
   image_url: string | null;
-  image_urls: string[] | null;
-  video_url: string | null;
-  location: string | null;
   completed_at: string | null;
 };
 
-type CvEntry = {
+type ReviewItem = {
   id: string;
-  type: "competence" | "diplome" | "experience" | "stage" | "formation";
-  title: string;
-  institution: string | null;
-  period: string | null;
-  description: string | null;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  client_name: string;
 };
 
-type ServiceItem = {
-  id: string;
-  title: string;
-  price: number;
-  description: string | null;
-};
-
-type Tab = "cv" | "services" | "interventions";
+type Tab = "realisations" | "services" | "avis";
 
 const statusLabel: Record<WorkerData["status"], string> = {
   disponible: "Disponible",
@@ -62,22 +51,6 @@ const statusTone: Record<WorkerData["status"], "success" | "warning" | "neutral"
   indisponible: "neutral",
 };
 
-const cvSectionLabel: Record<CvEntry["type"], string> = {
-  diplome: "Diplômes",
-  formation: "Formations",
-  experience: "Expériences",
-  stage: "Stages",
-  competence: "Compétences",
-};
-
-const cvSectionOrder: CvEntry["type"][] = [
-  "diplome",
-  "formation",
-  "experience",
-  "stage",
-  "competence",
-];
-
 export function WorkerProfileView({
   workerId,
   variant,
@@ -85,12 +58,13 @@ export function WorkerProfileView({
   workerId: string;
   variant: "own" | "public";
 }) {
+  const router = useRouter();
   const [worker, setWorker] = useState<WorkerData | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
-  const [cvEntries, setCvEntries] = useState<CvEntry[]>([]);
-  const [services, setServices] = useState<ServiceItem[]>([]);
-  const [tab, setTab] = useState<Tab>("cv");
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [tab, setTab] = useState<Tab>("realisations");
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     async function loadAll() {
@@ -103,45 +77,90 @@ export function WorkerProfileView({
         .single();
 
       if (!workerProfile) {
+        setNotFound(true);
         setLoading(false);
         return;
       }
 
-      const [{ data: profile }, { data: portfolioData }, { data: cvRows }, { data: serviceRows }] =
+      const [{ data: profile }, { data: portfolioData }, { data: reviewRows }] =
         await Promise.all([
           supabase.from("profiles").select("full_name").eq("id", workerId).single(),
           supabase
             .from("worker_portfolio")
-            .select("id, title, description, image_url, image_urls, video_url, location, completed_at")
+            .select("id, title, description, image_url, completed_at")
             .eq("worker_id", workerId)
             .order("completed_at", { ascending: false }),
           supabase
-            .from("worker_cv_entries")
-            .select("id, type, title, institution, period, description")
-            .eq("worker_id", workerId)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("worker_services")
-            .select("id, title, price, description")
+            .from("reviews")
+            .select("id, rating, comment, created_at, client_id")
             .eq("worker_id", workerId)
             .order("created_at", { ascending: false }),
         ]);
+
+      let reviewsWithNames: ReviewItem[] = [];
+      if (reviewRows && reviewRows.length > 0) {
+        const clientIds = reviewRows.map((r) => r.client_id);
+        const { data: clientProfiles } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", clientIds);
+        const nameById = new Map(
+          (clientProfiles ?? []).map((p) => [p.id, p.full_name])
+        );
+        reviewsWithNames = reviewRows.map((r) => ({
+          id: r.id,
+          rating: r.rating,
+          comment: r.comment,
+          created_at: r.created_at,
+          client_name: nameById.get(r.client_id) ?? "Client",
+        }));
+      }
 
       setWorker({
         ...workerProfile,
         full_name: profile?.full_name ?? "Professionnel",
       });
       setPortfolio(portfolioData ?? []);
-      setCvEntries(cvRows ?? []);
-      setServices(serviceRows ?? []);
+      setReviews(reviewsWithNames);
       setLoading(false);
     }
 
     loadAll();
   }, [workerId]);
 
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.push("/connexion");
+  }
+
   if (loading) {
     return <p className="text-sm text-ink-600">Chargement…</p>;
+  }
+
+  if (notFound) {
+    if (variant === "own") {
+      return (
+        <div className="flex flex-col items-center py-10 text-center">
+          <p className="mb-2 text-base font-medium text-ink-900">
+            Votre profil professionnel n'est pas encore configuré
+          </p>
+          <p className="mb-6 text-sm text-ink-600">
+            Renseignez votre métier, vos compétences et votre zone
+            d'intervention pour apparaître dans les recherches.
+          </p>
+          <Link href="/travailleur/profil" className="w-full">
+            <Button className="w-full">Créer mon profil</Button>
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="mt-3 w-full rounded-md border border-wine-200 py-3 text-sm font-medium text-wine-700"
+          >
+            Déconnexion
+          </button>
+        </div>
+      );
+    }
+    return <p className="text-sm text-ink-600">Profil introuvable.</p>;
   }
 
   if (!worker) {
@@ -171,7 +190,7 @@ export function WorkerProfileView({
         </div>
         <div className="text-center">
           <p className="text-lg font-semibold text-ink-900">{portfolio.length}</p>
-          <p className="text-xs text-ink-600">Interventions</p>
+          <p className="text-xs text-ink-600">Réalisations</p>
         </div>
       </div>
 
@@ -179,7 +198,24 @@ export function WorkerProfileView({
         <Badge tone={statusTone[worker.status]}>{statusLabel[worker.status]}</Badge>
       </div>
 
-      {variant === "public" && (
+      {variant === "own" ? (
+        <div className="mb-6 flex flex-col gap-2">
+          <Link href="/travailleur/profil">
+            <Button className="w-full">Modifier mon profil</Button>
+          </Link>
+          <Link href="/travailleur/demandes">
+            <Button variant="secondary" className="w-full">
+              Mes demandes
+            </Button>
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="w-full rounded-md border border-wine-200 py-3 text-sm font-medium text-wine-700"
+          >
+            Déconnexion
+          </button>
+        </div>
+      ) : (
         <Link href={`/demande/${workerId}`}>
           <Button className="mb-6 w-full">Demander une intervention</Button>
         </Link>
@@ -188,9 +224,9 @@ export function WorkerProfileView({
       <div className="mb-4 flex border-b border-beige-200">
         {(
           [
-            { id: "cv", label: "CV" },
+            { id: "realisations", label: "Réalisations" },
             { id: "services", label: "Services" },
-            { id: "interventions", label: "Interventions" },
+            { id: "avis", label: "Avis" },
           ] as { id: Tab; label: string }[]
         ).map((t) => (
           <button
@@ -207,125 +243,100 @@ export function WorkerProfileView({
         ))}
       </div>
 
-      {tab === "cv" && (
-        <div className="flex flex-col gap-5">
-          {variant === "own" && (
-            <Link href="/travailleur/cv">
-              <Button variant="secondary" className="w-full">
-                Modifier mon CV
-              </Button>
-            </Link>
-          )}
-          {cvEntries.length === 0 && (
+      {tab === "realisations" && (
+        <div className="flex flex-col gap-3">
+          {portfolio.length === 0 && (
             <p className="text-center text-sm text-ink-600">
-              Aucune information de CV renseignée pour le moment.
+              Aucune réalisation publiée pour le moment.
             </p>
           )}
-          {cvSectionOrder.map((sectionType) => {
-            const items = cvEntries.filter((e) => e.type === sectionType);
-            if (items.length === 0) return null;
-            return (
-              <div key={sectionType}>
-                <p className="mb-2 text-sm font-medium text-ink-600">
-                  {cvSectionLabel[sectionType]}
-                </p>
-                {sectionType === "competence" ? (
-                  <div className="flex flex-wrap gap-2">
-                    {items.map((item) => (
-                      <Badge key={item.id} tone="wine">
-                        {item.title}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-md border border-wine-100 bg-white p-3"
-                      >
-                        <p className="text-sm font-medium text-ink-900">{item.title}</p>
-                        {item.institution && (
-                          <p className="text-xs text-ink-600">{item.institution}</p>
-                        )}
-                        {item.period && (
-                          <p className="text-xs text-ink-400">{item.period}</p>
-                        )}
-                        {item.description && (
-                          <p className="mt-1 text-xs text-ink-600">{item.description}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+          {portfolio.map((item) => (
+            <div
+              key={item.id}
+              className="overflow-hidden rounded-md border border-wine-100 bg-white"
+            >
+              {item.image_url && (
+                <img
+                  src={item.image_url}
+                  alt={item.title}
+                  className="h-40 w-full object-cover"
+                />
+              )}
+              <div className="p-3">
+                <p className="text-sm font-medium text-ink-900">{item.title}</p>
+                {item.description && (
+                  <p className="mt-0.5 text-xs text-ink-600">{item.description}</p>
+                )}
+                {item.completed_at && (
+                  <p className="mt-1 text-xs text-ink-400">
+                    {new Date(item.completed_at).toLocaleDateString("fr-FR")}
+                  </p>
                 )}
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {tab === "services" && (
-        <div className="flex flex-col gap-3">
-          {variant === "own" && (
-            <Link href="/travailleur/services">
-              <Button variant="secondary" className="w-full">
-                Gérer mes services
-              </Button>
-            </Link>
-          )}
-          {services.length === 0 && (
-            <p className="text-center text-sm text-ink-600">
-              Aucun service renseigné pour le moment.
-            </p>
-          )}
-          {services.map((s) => (
-            <div key={s.id} className="rounded-md border border-wine-100 bg-white p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-ink-900">{s.title}</p>
-                <p className="text-sm font-medium text-wine-600">
-                  {s.price.toLocaleString("fr-FR")} FCFA
-                </p>
-              </div>
-              {s.description && (
-                <p className="mt-1 text-xs text-ink-600">{s.description}</p>
-              )}
             </div>
           ))}
         </div>
       )}
 
-      {tab === "interventions" && (
-        <div className="flex flex-col gap-3">
-          {variant === "own" && (
-            <InterventionComposer
-              workerId={workerId}
-              onPublished={(item) =>
-                setPortfolio((prev) => [{ ...item, image_urls: item.image_urls ?? [] }, ...prev])
-              }
-            />
-          )}
-          {portfolio.length === 0 && (
-            <p className="text-center text-sm text-ink-600">
-              Aucune intervention publiée pour le moment.
+      {tab === "services" && (
+        <div>
+          {worker.zone && (
+            <p className="mb-4 text-sm text-ink-600">
+              Zone d'intervention : {worker.zone}
             </p>
           )}
-          {portfolio.map((item) => (
-            <InterventionCard
-              key={item.id}
-              id={item.id}
-              title={item.title}
-              description={item.description}
-              imageUrls={item.image_urls?.length ? item.image_urls : item.image_url ? [item.image_url] : []}
-              videoUrl={item.video_url}
-              location={item.location}
-              completedAt={item.completed_at}
-              isOwner={variant === "own"}
-              onUpdated={(fields) =>
-                setPortfolio((prev) =>
-                  prev.map((p) => (p.id === item.id ? { ...p, ...fields } : p))
-                )
-              }
-            />
+          {worker.bio && (
+            <div className="mb-5">
+              <p className="mb-1 text-sm font-medium text-ink-600">Biographie</p>
+              <p className="whitespace-pre-line text-sm text-ink-900">{worker.bio}</p>
+            </div>
+          )}
+          {worker.competences.length > 0 && (
+            <div className="mb-5">
+              <p className="mb-2 text-sm font-medium text-ink-600">Services proposés</p>
+              <div className="flex flex-wrap gap-2">
+                {worker.competences.map((c) => (
+                  <Badge key={c} tone="wine">
+                    {c}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="mb-5">
+            <p className="mb-1 text-sm font-medium text-ink-600">Expérience</p>
+            <p className="text-sm text-ink-900">{worker.experience_years} ans</p>
+          </div>
+          {worker.description && (
+            <div className="mb-5">
+              <p className="mb-1 text-sm font-medium text-ink-600">À propos</p>
+              <p className="text-sm text-ink-900">{worker.description}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "avis" && (
+        <div className="flex flex-col gap-3">
+          {reviews.length === 0 && (
+            <p className="text-center text-sm text-ink-600">Aucun avis pour le moment.</p>
+          )}
+          {reviews.map((review) => (
+            <div key={review.id} className="rounded-md border border-wine-100 bg-white p-3">
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-sm font-medium text-ink-900">{review.client_name}</p>
+                <span className="flex items-center gap-1 text-xs text-ink-600">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  {review.rating}
+                </span>
+              </div>
+              {review.comment && (
+                <p className="text-sm text-ink-600">{review.comment}</p>
+              )}
+              <p className="mt-1 text-xs text-ink-400">
+                {new Date(review.created_at).toLocaleDateString("fr-FR")}
+              </p>
+            </div>
           ))}
         </div>
       )}
