@@ -22,6 +22,8 @@ export default function TravailleurProfilPage() {
   const [experienceYears, setExperienceYears] = useState("0");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<Status>("disponible");
+  const [availabilityStart, setAvailabilityStart] = useState("");
+  const [availabilityEnd, setAvailabilityEnd] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -71,6 +73,12 @@ export default function TravailleurProfilPage() {
         setExperienceYears(String(existing.experience_years ?? 0));
         setDescription(existing.description ?? "");
         setStatus(existing.status ?? "disponible");
+        setAvailabilityStart(
+          existing.availability_start ? existing.availability_start.slice(0, 5) : ""
+        );
+        setAvailabilityEnd(
+          existing.availability_end ? existing.availability_end.slice(0, 5) : ""
+        );
       }
 
       setLoading(false);
@@ -102,6 +110,8 @@ export default function TravailleurProfilPage() {
       experience_years: parseInt(experienceYears, 10) || 0,
       description: description.trim() || null,
       status,
+      availability_start: availabilityStart || null,
+      availability_end: availabilityEnd || null,
     });
 
     setSaving(false);
@@ -117,118 +127,149 @@ export default function TravailleurProfilPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-md px-5 py-6">
+      <main className="min-h-screen bg-beige-50 mx-auto max-w-md px-5 py-6">
         <p className="text-sm text-ink-600">Chargement…</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-md px-5 py-6">
-      <div className="mb-6 flex items-center gap-3">
-        <button onClick={() => router.push("/")} aria-label="Retour">
-          <ChevronLeft className="h-5 w-5 text-ink-900" />
-        </button>
-        <h1 className="text-lg font-medium text-ink-900">
-          Mon profil professionnel
-        </h1>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <label className="mb-1.5 block text-sm font-medium text-ink-900">
-          Statut
-        </label>
-        <div className="mb-4 flex gap-2">
-          {(
-            [
-              { value: "disponible", label: "🟢 Disponible" },
-              { value: "occupe", label: "🟠 Occupé" },
-              { value: "indisponible", label: "⚫ Indisponible" },
-            ] as { value: Status; label: string }[]
-          ).map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setStatus(option.value)}
-              className={`flex-1 rounded-md border px-2 py-2 text-xs font-medium ${
-                status === option.value
-                  ? "border-wine-600 bg-wine-50 text-wine-700"
-                  : "border-wine-100 text-ink-600"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+    <main className="min-h-screen bg-beige-50">
+      <div className="mx-auto max-w-md px-5 py-6">
+        <div className="mb-6 flex items-center gap-3">
+          <button onClick={() => router.push("/")} aria-label="Retour">
+            <ChevronLeft className="h-5 w-5 text-ink-900" />
+          </button>
+          <h1 className="text-lg font-medium text-ink-900">
+            Mon profil professionnel
+          </h1>
         </div>
 
-        <label className="mb-1.5 block text-sm font-medium text-ink-900">
-          Service
-        </label>
-        <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className="mb-4 w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
-          required
-        >
-          <option value="">Sélectionner…</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <form onSubmit={handleSubmit}>
+          <label className="mb-1.5 block text-sm font-medium text-ink-900">
+            Statut
+          </label>
+          <div className="mb-4 flex gap-2">
+            {(
+              [
+                { value: "disponible", label: "🟢 Disponible" },
+                { value: "occupe", label: "🟠 Occupé" },
+                { value: "indisponible", label: "⚫ Indisponible" },
+              ] as { value: Status; label: string }[]
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setStatus(option.value)}
+                className={`flex-1 rounded-md border px-2 py-2 text-xs font-medium ${
+                  status === option.value
+                    ? "border-wine-600 bg-wine-50 text-wine-700"
+                    : "border-wine-100 text-ink-600"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
 
-        <Input
-          label="Métier"
-          value={metier}
-          onChange={(e) => setMetier(e.target.value)}
-          placeholder="Ex : Mécanicien automobile"
-          required
-        />
-        <Input
-          label="Compétences (séparées par une virgule)"
-          value={competences}
-          onChange={(e) => setCompetences(e.target.value)}
-          placeholder="Ex : Diagnostic auto, Freinage, Batterie"
-        />
-        <Input
-          label="Zone d'intervention"
-          value={zone}
-          onChange={(e) => setZone(e.target.value)}
-          placeholder="Ex : Abomey-Calavi et environs"
-        />
-        <Input
-          label="Années d'expérience"
-          type="number"
-          min={0}
-          value={experienceYears}
-          onChange={(e) => setExperienceYears(e.target.value)}
-        />
-
-        <label className="mb-1.5 block text-sm font-medium text-ink-900">
-          À propos
-        </label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={4}
-          placeholder="Présentez votre activité en quelques mots…"
-          className="mb-4 w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-wine-400 focus:outline-none"
-        />
-
-        {error && (
-          <p className="mb-4 text-sm text-red-600" role="alert">
-            {error}
+          <label className="mb-1.5 block text-sm font-medium text-ink-900">
+            Plage horaire de disponibilité
+          </label>
+          <p className="mb-2 text-xs text-ink-600">
+            En dehors de cette plage, votre profil affichera automatiquement
+            "Indisponible" (si votre statut est "Disponible"). Laissez vide
+            pour ne pas limiter dans le temps.
           </p>
-        )}
-        {success && (
-          <p className="mb-4 text-sm text-green-600">✓ Profil enregistré</p>
-        )}
+          <div className="mb-4 flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs text-ink-600">De</label>
+              <input
+                type="time"
+                value={availabilityStart}
+                onChange={(e) => setAvailabilityStart(e.target.value)}
+                className="w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-xs text-ink-600">À</label>
+              <input
+                type="time"
+                value={availabilityEnd}
+                onChange={(e) => setAvailabilityEnd(e.target.value)}
+                className="w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
+              />
+            </div>
+          </div>
 
-        <Button type="submit" disabled={saving} className="w-full">
-          {saving ? "Enregistrement…" : "Enregistrer"}
-        </Button>
-      </form>
+          <label className="mb-1.5 block text-sm font-medium text-ink-900">
+            Service
+          </label>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="mb-4 w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
+            required
+          >
+            <option value="">Sélectionner…</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+
+          <Input
+            label="Métier"
+            value={metier}
+            onChange={(e) => setMetier(e.target.value)}
+            placeholder="Ex : Mécanicien automobile"
+            required
+          />
+          <Input
+            label="Compétences (séparées par une virgule)"
+            value={competences}
+            onChange={(e) => setCompetences(e.target.value)}
+            placeholder="Ex : Diagnostic auto, Freinage, Batterie"
+          />
+          <Input
+            label="Zone d'intervention"
+            value={zone}
+            onChange={(e) => setZone(e.target.value)}
+            placeholder="Ex : Abomey-Calavi et environs"
+          />
+          <Input
+            label="Années d'expérience"
+            type="number"
+            min={0}
+            value={experienceYears}
+            onChange={(e) => setExperienceYears(e.target.value)}
+          />
+
+          <label className="mb-1.5 block text-sm font-medium text-ink-900">
+            À propos
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            placeholder="Présentez votre activité en quelques mots…"
+            className="mb-4 w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-wine-400 focus:outline-none"
+          />
+
+          {error && (
+            <p className="mb-4 text-sm text-red-600" role="alert">
+              {error}
+            </p>
+          )}
+          {success && (
+            <p className="mb-4 text-sm text-green-600">✓ Profil enregistré</p>
+          )}
+
+          <Button type="submit" disabled={saving} className="w-full">
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </form>
+      </div>
     </main>
   );
 }

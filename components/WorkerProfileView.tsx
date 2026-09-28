@@ -7,11 +7,14 @@ import { Star } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
+import { getEffectiveStatus } from "@/lib/availability";
 
 type WorkerData = {
   metier: string;
   zone: string | null;
   status: "disponible" | "occupe" | "indisponible";
+  availability_start: string | null;
+  availability_end: string | null;
   rating: number;
   rating_count: number;
   experience_years: number;
@@ -71,7 +74,7 @@ export function WorkerProfileView({
       const { data: workerProfile } = await supabase
         .from("worker_profiles")
         .select(
-          "metier, zone, status, rating, rating_count, experience_years, competences, description, bio"
+          "metier, zone, status, availability_start, availability_end, rating, rating_count, experience_years, competences, description, bio"
         )
         .eq("id", workerId)
         .single();
@@ -167,6 +170,12 @@ export function WorkerProfileView({
     return <p className="text-sm text-ink-600">Profil introuvable.</p>;
   }
 
+  const effectiveStatus = getEffectiveStatus(
+    worker.status,
+    worker.availability_start,
+    worker.availability_end
+  );
+
   return (
     <div>
       <div className="mb-4 flex flex-col items-center text-center">
@@ -195,7 +204,7 @@ export function WorkerProfileView({
       </div>
 
       <div className="mb-5 flex justify-center">
-        <Badge tone={statusTone[worker.status]}>{statusLabel[worker.status]}</Badge>
+        <Badge tone={statusTone[effectiveStatus]}>{statusLabel[effectiveStatus]}</Badge>
       </div>
 
       {variant === "own" ? (

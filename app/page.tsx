@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { InterventionCard } from "@/components/InterventionCard";
 import { supabase } from "@/lib/supabase";
+import { getEffectiveStatus } from "@/lib/availability";
 
 type Profile = {
   full_name: string;
@@ -27,6 +28,8 @@ type RecommendedWorker = {
   metier: string;
   zone: string | null;
   status: "disponible" | "occupe" | "indisponible";
+  availability_start: string | null;
+  availability_end: string | null;
   rating: number;
   rating_count: number;
   full_name: string;
@@ -136,7 +139,7 @@ export default function HomePage() {
 
       const { data: workers } = await supabase
         .from("worker_profiles")
-        .select("id, metier, zone, status, rating, rating_count")
+        .select("id, metier, zone, status, availability_start, availability_end, rating, rating_count")
         .order("rating", { ascending: false })
         .limit(5);
 
@@ -309,8 +312,8 @@ export default function HomePage() {
                     </p>
                   )}
                 </div>
-                <Badge tone={statusTone[worker.status]}>
-                  {statusLabel[worker.status]}
+                <Badge tone={statusTone[getEffectiveStatus(worker.status, worker.availability_start, worker.availability_end)]}>
+                  {statusLabel[getEffectiveStatus(worker.status, worker.availability_start, worker.availability_end)]}
                 </Badge>
               </Card>
             </Link>
