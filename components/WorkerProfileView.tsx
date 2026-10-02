@@ -30,7 +30,40 @@ type PortfolioItem = {
   description: string | null;
   image_url: string | null;
   completed_at: string | null;
+  created_at: string;
+  location: string | null;
+  video_url: string | null;
+  image_urls: string[] | null;
+  media_urls: string[] | null;
+  intervention_date: string | null;
 };
+
+type PortfolioComment = {
+  id: string;
+  portfolio_id: string;
+  rating: number | null;
+  comment: string | null;
+  created_at: string;
+  client_name: string;
+};
+
+const VIDEO_RE = /\.(mp4|webm|mov|m4v|ogv)(\?.*)?$/i;
+
+function getMedia(item: PortfolioItem): { url: string; isVideo: boolean }[] {
+  const urls: string[] = [];
+  const add = (u: string | null | undefined) => {
+    if (u && !urls.includes(u)) urls.push(u);
+  };
+  if (item.media_urls && item.media_urls.length > 0) {
+    item.media_urls.forEach(add);
+  } else if (item.image_urls && item.image_urls.length > 0) {
+    item.image_urls.forEach(add);
+  } else {
+    add(item.image_url);
+  }
+  add(item.video_url);
+  return urls.map((url) => ({ url, isVideo: VIDEO_RE.test(url) }));
+}
 
 type ReviewItem = {
   id: string;
@@ -40,7 +73,23 @@ type ReviewItem = {
   client_name: string;
 };
 
-type Tab = "realisations" | "services" | "avis";
+type CvEntry = {
+  id: string;
+  type: "competence" | "diplome" | "experience" | "stage" | "formation";
+  title: string;
+  institution: string | null;
+  period: string | null;
+  description: string | null;
+};
+
+type Offering = {
+  id: string;
+  title: string;
+  average_price: number | null;
+  price_unit: string | null;
+};
+
+type Tab = "interventions" | "services" | "cv" | "avis";
 
 const statusLabel: Record<WorkerData["status"], string> = {
   disponible: "Disponible",
@@ -54,6 +103,14 @@ const statusTone: Record<WorkerData["status"], "success" | "warning" | "neutral"
   indisponible: "neutral",
 };
 
+const cvGroups: { type: CvEntry["type"]; label: string }[] = [
+  { type: "diplome", label: "Diplômes" },
+  { type: "formation", label: "Formations" },
+  { type: "experience", label: "Expériences" },
+  { type: "stage", label: "Stages" },
+  { type: "competence", label: "Compétences" },
+];
+
 export function WorkerProfileView({
   workerId,
   variant,
@@ -65,7 +122,11 @@ export function WorkerProfileView({
   const [worker, setWorker] = useState<WorkerData | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
-  const [tab, setTab] = useState<Tab>("realisations");
+  const [cvEntries, setCvEntries] = useState<CvEntry[]>([]);
+  const [offerings, setOfferings] = useState<Offering[]>([]);
+  const [comments, setComments] = useState<PortfolioComment[]>([]);
+  const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
+  const [tab, setTab] = useState<Tab>("interventions");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -85,46 +146,47 @@ export function WorkerProfileView({
         return;
       }
 
-      const [{ data: profile }, { data: portfolioData }, { data: reviewRows }] =
-        await Promise.all([
-          supabase.from("profiles").select("full_name").eq("id", workerId).single(),
-          supabase
-            .from("worker_portfolio")
-            .select("id, title, description, image_url, completed_at")
-            .eq("worker_id", workerId)
-            .order("completed_at", { ascending: false }),
-          supabase
-            .from("reviews")
-            .select("id, rating, comment, created_at, client_id")
-            .eq("worker_id", workerId)
-            .order("created_at", { ascending: false }),
-        ]);
-
-      let reviewsWithNames: ReviewItem[] = [];
-      if (reviewRows && reviewRows.length > 0) {
-        const clientIds = reviewRows.map((r) => r.client_id);
-        const { data: clientProfiles } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", clientIds);
-        const nameById = new Map(
-          (clientProfiles ?? []).map((p) => [p.id, p.full_name])
-        );
-        reviewsWithNames = reviewRows.map((r) => ({
-          id: r.id,
-          rating: r.rating,
-          comment: r.comment,
-          created_at: r.created_at,
-          client_name: nameById.get(r.client_id) ?? "Client",
-        }));
+      const [
+        { data: profile },
+        { data: portfolioData },
+        { data: reviewRows },
+        { data: cvData },
+        { data: offeringData },
+      ] = await Promise.all([
+        supabase.from("profiles").select("full_name").eq("id", workerId).single(),
+        supabase
+          .from("worker_portfolio")
+          .select(
+            "id, title, description, image_url, completed_at, created_at, location, video_url, image_urls, media_urls, intervention_date"
+          )
+cat >> ~/lifease/components/WorkerProfileView.tsx << 'EOF'
+        if (commentRows && commentRows.length > 0) {
+          const ids = Array.from(new Set(commentRows.map((c) => c.client_id)));
+          const { data: names } = await supabase
+            .from("profiles")
+            .select("id, full_name")
+            .in("id", ids);
+          const byId = new Map((names ?? []).map((n) => [n.id, n.full_name]));
+          commentsWithNames = commentRows.map((c) => ({
+            id: c.id,
+            portfolio_id: c.portfolio_id,
+            rating: c.rating,
+            comment: c.comment,
+            created_at: c.created_at,
+            client_name: byId.get(c.client_id) ?? "Client",
+          }));
+        }
       }
 
       setWorker({
         ...workerProfile,
         full_name: profile?.full_name ?? "Professionnel",
       });
-      setPortfolio(portfolioData ?? []);
+      setPortfolio((portfolioData ?? []) as PortfolioItem[]);
+      setComments(commentsWithNames);
       setReviews(reviewsWithNames);
+      setCvEntries((cvData ?? []) as CvEntry[]);
+      setOfferings((offeringData ?? []) as Offering[]);
       setLoading(false);
     }
 
@@ -176,6 +238,9 @@ export function WorkerProfileView({
     worker.availability_end
   );
 
+  const hasAbout =
+    !!worker.bio || !!worker.description || worker.experience_years > 0;
+
   return (
     <div>
       <div className="mb-4 flex flex-col items-center text-center">
@@ -184,6 +249,9 @@ export function WorkerProfileView({
         </div>
         <p className="text-lg font-medium text-ink-900">{worker.full_name}</p>
         <p className="text-sm text-ink-600">{worker.metier}</p>
+        {worker.zone && (
+          <p className="mt-0.5 text-xs text-ink-400">{worker.zone}</p>
+        )}
       </div>
 
       <div className="mb-4 flex items-center justify-center gap-8">
@@ -199,7 +267,7 @@ export function WorkerProfileView({
         </div>
         <div className="text-center">
           <p className="text-lg font-semibold text-ink-900">{portfolio.length}</p>
-          <p className="text-xs text-ink-600">Réalisations</p>
+          <p className="text-xs text-ink-600">Interventions</p>
         </div>
       </div>
 
@@ -211,6 +279,11 @@ export function WorkerProfileView({
         <div className="mb-6 flex flex-col gap-2">
           <Link href="/travailleur/profil">
             <Button className="w-full">Modifier mon profil</Button>
+          </Link>
+          <Link href="/travailleur/cv">
+            <Button variant="secondary" className="w-full">
+              Modifier mon CV
+            </Button>
           </Link>
           <Link href="/travailleur/demandes">
             <Button variant="secondary" className="w-full">
@@ -233,15 +306,16 @@ export function WorkerProfileView({
       <div className="mb-4 flex border-b border-beige-200">
         {(
           [
-            { id: "realisations", label: "Réalisations" },
+            { id: "interventions", label: "Interventions" },
             { id: "services", label: "Services" },
+            { id: "cv", label: "CV" },
             { id: "avis", label: "Avis" },
           ] as { id: Tab; label: string }[]
         ).map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 border-b-2 pb-2 text-sm font-medium ${
+            className={`flex-1 border-b-2 pb-2 text-xs font-medium ${
               tab === t.id
                 ? "border-wine-600 text-wine-600"
                 : "border-transparent text-ink-600"
@@ -252,54 +326,136 @@ export function WorkerProfileView({
         ))}
       </div>
 
-      {tab === "realisations" && (
-        <div className="flex flex-col gap-3">
+      {tab === "interventions" && (
+        <div className="flex flex-col gap-4">
           {portfolio.length === 0 && (
             <p className="text-center text-sm text-ink-600">
-              Aucune réalisation publiée pour le moment.
+              Aucune intervention publiée pour le moment.
             </p>
           )}
-          {portfolio.map((item) => (
-            <div
-              key={item.id}
-              className="overflow-hidden rounded-md border border-wine-100 bg-white"
-            >
-              {item.image_url && (
-                <img
-                  src={item.image_url}
-                  alt={item.title}
-                  className="h-40 w-full object-cover"
-                />
-              )}
-              <div className="p-3">
-                <p className="text-sm font-medium text-ink-900">{item.title}</p>
-                {item.description && (
-                  <p className="mt-0.5 text-xs text-ink-600">{item.description}</p>
+          {portfolio.map((item) => {
+            const media = getMedia(item);
+            const itemComments = comments.filter((c) => c.portfolio_id === item.id);
+            const rawDate = item.intervention_date ?? item.completed_at ?? item.created_at;
+            const isOpen = !!openComments[item.id];
+            return (
+              <article
+                key={item.id}
+                className="overflow-hidden rounded-md border border-wine-100 bg-white"
+              >
+                <div className="px-3 pt-3">
+                  <p className="text-sm font-medium text-ink-900">{item.title}</p>
+                  <p className="text-xs text-ink-400">
+                    {new Date(rawDate).toLocaleDateString("fr-FR")}
+                    {item.location ? ` – ${item.location}` : ""}
+                  </p>
+                </div>
+
+                {media.length > 0 && (
+                  <div className="mt-2 flex snap-x snap-mandatory gap-1 overflow-x-auto">
+                    {media.map((m) =>
+                      m.isVideo ? (
+                        <video
+                          key={m.url}
+                          src={m.url}
+                          controls
+                          preload="metadata"
+                          className="h-56 w-full shrink-0 snap-center bg-black object-cover"
+                        />
+                      ) : (
+                        <img
+                          key={m.url}
+                          src={m.url}
+                          alt={item.title}
+                          className="h-56 w-full shrink-0 snap-center object-cover"
+                        />
+                      )
+                    )}
+                  </div>
                 )}
-                {item.completed_at && (
-                  <p className="mt-1 text-xs text-ink-400">
-                    {new Date(item.completed_at).toLocaleDateString("fr-FR")}
+                {media.length > 1 && (
+                  <p className="px-3 pt-1 text-right text-xs text-ink-400">
+                    {media.length} médias – faites glisser
                   </p>
                 )}
-              </div>
-            </div>
-          ))}
+
+                <div className="p-3">
+                  {item.description && (
+                    <p className="whitespace-pre-line text-sm text-ink-900">
+                      {item.description}
+                    </p>
+                  )}
+                  <button
+                    onClick={() =>
+                      setOpenComments((prev) => ({ ...prev, [item.id]: !prev[item.id] }))
+                    }
+                    className="mt-2 text-xs font-medium text-wine-600"
+                  >
+                    {itemComments.length === 0
+                      ? "Aucun avis sur cette intervention"
+                      : `${isOpen ? "Masquer" : "Voir"} les avis (${itemComments.length})`}
+                  </button>
+                  {isOpen && itemComments.length > 0 && (
+                    <div className="mt-2 flex flex-col gap-2">
+                      {itemComments.map((c) => (
+                        <div key={c.id} className="rounded-md bg-beige-50 p-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-medium text-ink-900">
+                              {c.client_name}
+                            </p>
+                            {c.rating != null && (
+                              <span className="flex items-center gap-1 text-xs text-ink-600">
+                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                {c.rating}
+                              </span>
+                            )}
+                          </div>
+                          {c.comment && (
+                            <p className="mt-0.5 text-xs text-ink-600">{c.comment}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
 
       {tab === "services" && (
         <div>
-          {worker.zone && (
-            <p className="mb-4 text-sm text-ink-600">
-              Zone d'intervention : {worker.zone}
-            </p>
-          )}
-          {worker.bio && (
-            <div className="mb-5">
-              <p className="mb-1 text-sm font-medium text-ink-600">Biographie</p>
-              <p className="whitespace-pre-line text-sm text-ink-900">{worker.bio}</p>
-            </div>
-          )}
+          <div className="mb-5">
+            <p className="mb-2 text-sm font-medium text-ink-600">Tarifs indicatifs</p>
+            {offerings.length === 0 ? (
+              <p className="text-sm text-ink-600">
+                {variant === "own"
+                  ? "Vous n'avez pas encore de services tarifés."
+                  : "Aucun tarif renseigné pour le moment."}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {offerings.map((o) => (
+                  <div
+                    key={o.id}
+                    className="flex items-center justify-between rounded-md border border-wine-100 bg-white p-3"
+                  >
+                    <p className="text-sm font-medium text-ink-900">{o.title}</p>
+                    <p className="text-sm text-wine-700">
+                      {o.average_price != null
+                        ? `${Number(o.average_price).toLocaleString("fr-FR")} FCFA`
+                        : "Sur devis"}
+                      {o.average_price != null && o.price_unit
+                        ? ` / ${o.price_unit}`
+                        : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {worker.competences.length > 0 && (
             <div className="mb-5">
               <p className="mb-2 text-sm font-medium text-ink-600">Services proposés</p>
@@ -312,16 +468,68 @@ export function WorkerProfileView({
               </div>
             </div>
           )}
-          <div className="mb-5">
-            <p className="mb-1 text-sm font-medium text-ink-600">Expérience</p>
-            <p className="text-sm text-ink-900">{worker.experience_years} ans</p>
-          </div>
-          {worker.description && (
+        </div>
+      )}
+
+      {tab === "cv" && (
+        <div>
+          {hasAbout && (
             <div className="mb-5">
-              <p className="mb-1 text-sm font-medium text-ink-600">À propos</p>
-              <p className="text-sm text-ink-900">{worker.description}</p>
+              {worker.bio && (
+                <div className="mb-4">
+                  <p className="mb-1 text-sm font-medium text-ink-600">Biographie</p>
+                  <p className="whitespace-pre-line text-sm text-ink-900">{worker.bio}</p>
+                </div>
+              )}
+              {worker.description && (
+                <div className="mb-4">
+                  <p className="mb-1 text-sm font-medium text-ink-600">À propos</p>
+                  <p className="text-sm text-ink-900">{worker.description}</p>
+                </div>
+              )}
+              {worker.experience_years > 0 && (
+                <div>
+                  <p className="mb-1 text-sm font-medium text-ink-600">Expérience</p>
+                  <p className="text-sm text-ink-900">{worker.experience_years} ans</p>
+                </div>
+              )}
             </div>
           )}
+
+          {cvEntries.length === 0 && !hasAbout && (
+            <p className="text-center text-sm text-ink-600">
+              Aucun élément de CV renseigné pour le moment.
+            </p>
+          )}
+
+          {cvGroups.map((group) => {
+            const items = cvEntries.filter((e) => e.type === group.type);
+            if (items.length === 0) return null;
+            return (
+              <div key={group.type} className="mb-5">
+                <p className="mb-2 text-sm font-medium text-ink-600">{group.label}</p>
+                <div className="flex flex-col gap-2">
+                  {items.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="rounded-md border border-wine-100 bg-white p-3"
+                    >
+                      <p className="text-sm font-medium text-ink-900">{entry.title}</p>
+                      {entry.institution && (
+                        <p className="text-xs text-ink-600">{entry.institution}</p>
+                      )}
+                      {entry.period && (
+                        <p className="text-xs text-ink-400">{entry.period}</p>
+                      )}
+                      {entry.description && (
+                        <p className="mt-1 text-xs text-ink-600">{entry.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
