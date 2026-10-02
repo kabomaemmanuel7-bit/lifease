@@ -159,7 +159,6 @@ export function WorkerProfileView({
           .select(
             "id, title, description, image_url, completed_at, created_at, location, video_url, image_urls, media_urls, intervention_date"
           )
-cat >> ~/lifease/components/WorkerProfileView.tsx << 'EOF'
         if (commentRows && commentRows.length > 0) {
           const ids = Array.from(new Set(commentRows.map((c) => c.client_id)));
           const { data: names } = await supabase
