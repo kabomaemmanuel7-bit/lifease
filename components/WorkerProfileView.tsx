@@ -333,6 +333,11 @@ export function WorkerProfileView({
               Modifier mon CV
             </Button>
           </Link>
+          <Link href="/travailleur/services">
+            <Button variant="secondary" className="w-full">
+              Mes services tarifés
+            </Button>
+          </Link>
           <Link href="/travailleur/demandes">
             <Button variant="secondary" className="w-full">
               Mes demandes
