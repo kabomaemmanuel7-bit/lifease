@@ -338,6 +338,11 @@ export function WorkerProfileView({
               Mes services tarifés
             </Button>
           </Link>
+          <Link href="/travailleur/interventions">
+            <Button variant="secondary" className="w-full">
+              Mes interventions
+            </Button>
+          </Link>
           <Link href="/travailleur/demandes">
             <Button variant="secondary" className="w-full">
               Mes demandes
