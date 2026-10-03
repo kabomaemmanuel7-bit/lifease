@@ -355,9 +355,14 @@ export function WorkerProfileView({
           </button>
         </div>
       ) : (
-        <Link href={`/demande/${workerId}`}>
-          <Button className="mb-6 w-full">Demander une intervention</Button>
-        </Link>
+        <div className="mb-6 space-y-2">
+          <Link href={`/demande/${workerId}`}>
+            <Button className="w-full">Demander une intervention</Button>
+          </Link>
+          <Link href={`/messages/avec/${workerId}`} className="block w-full rounded-md border border-wine-200 py-3 text-center text-sm font-medium text-wine-700">
+            Écrire un message
+          </Link>
+        </div>
       )}
 
       <div className="mb-4 flex border-b border-beige-200">
