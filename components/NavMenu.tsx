@@ -30,6 +30,16 @@ export function NavMenu() {
   const [showInfos, setShowInfos] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [isWorker, setIsWorker] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      const uid = data.session?.user.id;
+      if (!uid) { setIsWorker(false); return; }
+      const { data: p } = await supabase.from("profiles").select("role").eq("id", uid).single();
+      setIsWorker(p?.role === "travailleur");
+    });
+  }, [open]);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -177,6 +187,20 @@ export function NavMenu() {
               )}
 
               <div className="my-2 border-t border-beige-200" />
+
+              {isWorker && (
+                <>
+                  <SimpleLink href="/travailleur/profil" onClick={closeMenu}>
+                    Modifier mon profil
+                  </SimpleLink>
+                  <SimpleLink href="/travailleur/cv" onClick={closeMenu}>
+                    Modifier mon CV
+                  </SimpleLink>
+                  <SimpleLink href="/travailleur/interventions" onClick={closeMenu}>
+                    Mes interventions
+                  </SimpleLink>
+                </>
+              )}
 
               <SimpleLink href="/compte" onClick={closeMenu}>
                 Mon compte

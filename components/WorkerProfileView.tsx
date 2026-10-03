@@ -325,22 +325,9 @@ export function WorkerProfileView({
 
       {variant === "own" ? (
         <div className="mb-6 flex flex-col gap-2">
-          <Link href="/travailleur/profil">
-            <Button className="w-full">Modifier mon profil</Button>
-          </Link>
-          <Link href="/travailleur/cv">
-            <Button variant="secondary" className="w-full">
-              Modifier mon CV
-            </Button>
-          </Link>
           <Link href="/travailleur/services">
             <Button variant="secondary" className="w-full">
               Mes services tarifés
-            </Button>
-          </Link>
-          <Link href="/travailleur/interventions">
-            <Button variant="secondary" className="w-full">
-              Mes interventions
             </Button>
           </Link>
           <Link href="/travailleur/demandes">
@@ -348,12 +335,6 @@ export function WorkerProfileView({
               Mes demandes
             </Button>
           </Link>
-          <button
-            onClick={handleSignOut}
-            className="w-full rounded-md border border-wine-200 py-3 text-sm font-medium text-wine-700"
-          >
-            Déconnexion
-          </button>
         </div>
       ) : (
         <div className="mb-6 space-y-2">
