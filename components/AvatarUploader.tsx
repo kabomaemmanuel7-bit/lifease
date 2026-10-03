@@ -79,8 +79,8 @@ export function AvatarUploader({
       await supabase.from("worker_profiles").update({ avatar_url: url }).eq("id", userId);
 
       setAvatarUrl(url);
-    } catch {
-      setError("Impossible d'enregistrer la photo. Réessayez.");
+    } catch (err) {
+      setError("Échec : " + ((err as { message?: string })?.message ?? "inconnu"));
     }
     setBusy(false);
   }
