@@ -7,6 +7,7 @@ import { Star } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
+import { AvatarUploader } from "@/components/AvatarUploader";
 import { getEffectiveStatus } from "@/lib/availability";
 
 type WorkerData = {
@@ -292,9 +293,7 @@ export function WorkerProfileView({
   return (
     <div>
       <div className="mb-4 flex flex-col items-center text-center">
-        <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-wine-600 text-2xl font-medium text-white">
-          {worker.full_name.charAt(0).toUpperCase()}
-        </div>
+        <AvatarUploader userId={workerId} name={worker.full_name} editable={variant === "own"} />
         <p className="text-lg font-medium text-ink-900">{worker.full_name}</p>
         <p className="text-sm text-ink-600">{worker.metier}</p>
         {worker.zone && (
