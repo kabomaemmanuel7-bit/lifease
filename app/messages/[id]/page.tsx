@@ -6,7 +6,9 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Person = { id: string; full_name: string | null; avatar_url: string | null };
-type Msg = { id: string; conversation_id: string; sender_id: string; body: string | null; audio_path: string | null; audio_seconds: number | null; read_at: string | null; created_at: string };
+type Msg = { id: string; conversation_id: string; sender_id: string; body: string | null; audio_path: string | null; audio_seconds: number | null; read_at: string | null; created_at: string; edited_at: string | null; deleted_at: string | null };
+
+const EDIT_MS = 15 * 60 * 1000;
 
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,15 +20,18 @@ export default function ChatPage() {
   const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
   const [secs, setSecs] = useState(0);
+  const [menu, setMenu] = useState<Msg | null>(null);
+  const [editing, setEditing] = useState<Msg | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cancelRef = useRef(false);
   const secsRef = useRef(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const pressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addMsg = useCallback((m: Msg) => {
-    setMsgs((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+    setMsgs((prev) => (prev.some((x) => x.id === m.id) ? prev.map((x) => (x.id === m.id ? m : x)) : [...prev, m]));
   }, []);
 
   useEffect(() => {
@@ -44,11 +49,14 @@ export default function ChatPage() {
       const { data: ms } = await supabase.from("messages").select("*").eq("conversation_id", id).order("created_at", { ascending: true });
       setMsgs((ms ?? []) as Msg[]);
       await supabase.from("messages").update({ read_at: new Date().toISOString() }).eq("conversation_id", id).neq("sender_id", uid).is("read_at", null);
-      channel = supabase.channel("conv-" + id).on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + id }, (payload) => {
-        const m = payload.new as Msg;
-        addMsg(m);
-        if (m.sender_id !== uid) supabase.from("messages").update({ read_at: new Date().toISOString() }).eq("id", m.id).then(() => {});
-      }).subscribe();
+      channel = supabase.channel("conv-" + id)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + id }, (payload) => {
+          const m = payload.new as Msg;
+          addMsg(m);
+          if (m.sender_id !== uid) supabase.from("messages").update({ read_at: new Date().toISOString() }).eq("id", m.id).then(() => {});
+        })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: "conversation_id=eq." + id }, (payload) => addMsg(payload.new as Msg))
+        .subscribe();
     })();
     return () => { if (channel) supabase.removeChannel(channel); };
   }, [id, addMsg]);
@@ -65,10 +73,45 @@ export default function ChatPage() {
   async function sendText() {
     const body = text.trim();
     if (!body || !me) return;
+    if (editing) {
+      const target = editing;
+      if (body !== target.body) {
+        const { data, error: err } = await supabase.from("messages").update({ body, edited_at: new Date().toISOString() }).eq("id", target.id).select().single();
+        if (err) { setError("Modification impossible : " + err.message); return; }
+        addMsg(data as Msg);
+      }
+      setEditing(null);
+      setText("");
+      return;
+    }
     setText("");
     const { data, error: err } = await supabase.from("messages").insert({ conversation_id: id, sender_id: me, body }).select().single();
     if (err) { setError("Envoi impossible : " + err.message); setText(body); return; }
     addMsg(data as Msg);
+  }
+
+  async function deleteMsg(m: Msg) {
+    setMenu(null);
+    setError("");
+    if (m.audio_path) await supabase.storage.from("voice").remove([m.audio_path]);
+    const { data, error: err } = await supabase.from("messages").update({ body: null, audio_path: null, audio_seconds: null, deleted_at: new Date().toISOString() }).eq("id", m.id).select().single();
+    if (err) { setError("Suppression impossible : " + err.message); return; }
+    addMsg(data as Msg);
+  }
+
+  function startEdit(m: Msg) {
+    setMenu(null);
+    setEditing(m);
+    setText(m.body ?? "");
+  }
+
+  function pressStart(m: Msg) {
+    if (m.sender_id !== me || m.deleted_at) return;
+    pressRef.current = setTimeout(() => setMenu(m), 450);
+  }
+
+  function pressEnd() {
+    if (pressRef.current) clearTimeout(pressRef.current);
   }
 
   async function startRec() {
@@ -128,10 +171,22 @@ export default function ChatPage() {
           const mine = m.sender_id === me;
           return (
             <div key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
-              <div className={"max-w-[80%] rounded-md px-3 py-2 text-sm " + (mine ? "bg-wine-700 text-white" : "bg-white text-ink-900 shadow-sm")}>
-                {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
-                {m.audio_path && (urls[m.audio_path] ? <audio controls src={urls[m.audio_path]} className="h-10 max-w-full" /> : <span>🎤 Chargement…</span>)}
-                <div className="mt-1 text-right text-[10px] opacity-70">{m.audio_seconds ? fmt(m.audio_seconds) + " · " : ""}{time(m.created_at)}</div>
+              <div
+                onTouchStart={() => pressStart(m)}
+                onTouchEnd={pressEnd}
+                onTouchMove={pressEnd}
+                onContextMenu={(e) => { e.preventDefault(); if (mine && !m.deleted_at) setMenu(m); }}
+                className={"max-w-[80%] select-none rounded-md px-3 py-2 text-sm " + (mine ? "bg-wine-700 text-white" : "bg-white text-ink-900 shadow-sm")}
+              >
+                {m.deleted_at ? (
+                  <p className="italic opacity-70">🚫 Message supprimé</p>
+                ) : (
+                  <>
+                    {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+                    {m.audio_path && (urls[m.audio_path] ? <audio controls src={urls[m.audio_path]} className="h-10 max-w-full" /> : <span>🎤 Chargement…</span>)}
+                  </>
+                )}
+                <div className="mt-1 text-right text-[10px] opacity-70">{m.edited_at && !m.deleted_at ? "modifié · " : ""}{m.audio_seconds ? fmt(m.audio_seconds) + " · " : ""}{time(m.created_at)}</div>
               </div>
             </div>
           );
@@ -139,6 +194,23 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
       {error && <p className="px-4 pb-2 text-sm text-red-600">{error}</p>}
+      {menu && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setMenu(null)}>
+          <div className="mx-auto w-full max-w-md rounded-t-xl bg-white p-3" onClick={(e) => e.stopPropagation()}>
+            {menu.body && Date.now() - new Date(menu.created_at).getTime() < EDIT_MS && (
+              <button onClick={() => startEdit(menu)} className="block w-full px-4 py-3 text-left text-ink-900">✏️ Modifier</button>
+            )}
+            <button onClick={() => deleteMsg(menu)} className="block w-full px-4 py-3 text-left text-wine-700">🗑️ Supprimer pour tout le monde</button>
+            <button onClick={() => setMenu(null)} className="block w-full px-4 py-3 text-left text-ink-600">Annuler</button>
+          </div>
+        </div>
+      )}
+      {editing && (
+        <div className="flex items-center justify-between border-t border-ink-400/20 bg-wine-50 px-4 py-2 text-sm text-wine-700">
+          <span>Modification du message</span>
+          <button onClick={() => { setEditing(null); setText(""); }}>✕</button>
+        </div>
+      )}
       <footer className="flex items-center gap-2 border-t border-ink-400/20 bg-white px-3 py-3">
         {recording ? (
           <>
@@ -149,7 +221,7 @@ export default function ChatPage() {
         ) : (
           <>
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendText(); }} placeholder="Écrire un message" className="flex-1 rounded-full border border-ink-400/30 px-4 py-2 text-sm" />
-            {text.trim() ? <button onClick={sendText} className="rounded-full bg-wine-700 px-4 py-2 text-sm text-white">Envoyer</button> : <button onClick={startRec} aria-label="Message vocal" className="rounded-full bg-wine-700 px-3 py-2 text-white">🎤</button>}
+            {text.trim() || editing ? <button onClick={sendText} className="rounded-full bg-wine-700 px-4 py-2 text-sm text-white">{editing ? "Enregistrer" : "Envoyer"}</button> : <button onClick={startRec} aria-label="Message vocal" className="rounded-full bg-wine-700 px-3 py-2 text-white">🎤</button>}
           </>
         )}
       </footer>

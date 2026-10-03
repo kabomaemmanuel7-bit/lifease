@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 type Person = { id: string; full_name: string | null; avatar_url: string | null };
 type Conv = { id: string; user_a: string; user_b: string; last_message_at: string };
-type Msg = { conversation_id: string; sender_id: string; body: string | null; audio_path: string | null; read_at: string | null; created_at: string };
+type Msg = { conversation_id: string; sender_id: string; body: string | null; audio_path: string | null; read_at: string | null; created_at: string; deleted_at: string | null };
 type Row = { id: string; other: string; last: string; at: string; unread: number };
 
 export default function MessagesPage() {
@@ -33,7 +33,7 @@ export default function MessagesPage() {
       const cl = (convs ?? []) as Conv[];
       let msgs: Msg[] = [];
       if (cl.length) {
-        const r = await supabase.from("messages").select("conversation_id, sender_id, body, audio_path, read_at, created_at").in("conversation_id", cl.map((c) => c.id)).order("created_at", { ascending: false }).limit(500);
+        const r = await supabase.from("messages").select("conversation_id, sender_id, body, audio_path, read_at, created_at, deleted_at").in("conversation_id", cl.map((c) => c.id)).order("created_at", { ascending: false }).limit(500);
         msgs = (r.data ?? []) as Msg[];
       }
       setRows(cl.map((c) => {
@@ -42,7 +42,7 @@ export default function MessagesPage() {
         return {
           id: c.id,
           other: c.user_a === uid ? c.user_b : c.user_a,
-          last: last ? (last.body ?? "🎤 Message vocal") : "Nouvelle conversation",
+          last: last ? (last.deleted_at ? "🚫 Message supprimé" : last.body ?? "🎤 Message vocal") : "Nouvelle conversation",
           at: c.last_message_at,
           unread: mine.filter((m) => m.sender_id !== uid && !m.read_at).length,
         };
