@@ -1,65 +1,77 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-type St = "load" | "off" | "on" | "denied" | "nosupport";
+const APP_ID = "95d2689c-f0fa-4efb-b9ad-9739654de145";
 
-function toKey(b64: string) {
-  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
-  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from(Array.from(raw).map((c) => c.charCodeAt(0)));
+type St = "load" | "off" | "on" | "denied" | "nosupport";
+type OS = {
+  init: (o: Record<string, unknown>) => Promise<void>;
+  login: (id: string) => Promise<void>;
+  Notifications: {
+    isPushSupported: () => boolean;
+    requestPermission: () => Promise<void>;
+  };
+  User: { PushSubscription: { optedIn?: boolean; optIn: () => Promise<void>; optOut: () => Promise<void> } };
+};
+type W = Window & { OneSignalDeferred?: Array<(os: OS) => void | Promise<void>>; __osInit?: boolean };
+
+function loadSdk() {
+  if (document.getElementById("onesignal-sdk")) return;
+  const s = document.createElement("script");
+  s.id = "onesignal-sdk";
+  s.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+  s.defer = true;
+  document.head.appendChild(s);
+}
+
+function readState(os: OS): St {
+  if (!os.Notifications.isPushSupported()) return "nosupport";
+  if (typeof Notification !== "undefined" && Notification.permission === "denied") return "denied";
+  return os.User.PushSubscription.optedIn ? "on" : "off";
 }
 
 export default function PushToggle() {
   const [st, setSt] = useState<St>("load");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const osRef = useRef<OS | null>(null);
 
   useEffect(() => {
-    (async () => {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-        setSt("nosupport");
-        return;
+    const w = window as W;
+    w.OneSignalDeferred = w.OneSignalDeferred || [];
+    w.OneSignalDeferred.push(async (os: OS) => {
+      if (!w.__osInit) {
+        w.__osInit = true;
+        await os.init({
+          appId: APP_ID,
+          serviceWorkerPath: "sw.js",
+          serviceWorkerParam: { scope: "/" },
+        });
       }
-      if (Notification.permission === "denied") {
-        setSt("denied");
-        return;
-      }
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
-        setSt(sub ? "on" : "off");
-      } catch {
-        setSt("off");
-      }
-    })();
+      const { data } = await supabase.auth.getSession();
+      const uid = data.session?.user.id;
+      if (uid) await os.login(uid);
+      osRef.current = os;
+      setSt(readState(os));
+    });
+    loadSdk();
   }, []);
 
   async function enable() {
+    const os = osRef.current;
+    if (!os) return;
     setBusy(true);
     setErr("");
     try {
-      const perm = await Notification.requestPermission();
-      if (perm !== "granted") {
+      await os.Notifications.requestPermission();
+      if (Notification.permission === "denied") {
         setSt("denied");
-        return;
+      } else {
+        await os.User.PushSubscription.optIn();
+        setSt("on");
       }
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: toKey(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "") as unknown as BufferSource,
-      });
-      const j = sub.toJSON();
-      const { data } = await supabase.auth.getSession();
-      const uid = data.session?.user.id;
-      if (!uid || !j.keys) throw new Error("Session introuvable");
-      const { error } = await supabase.from("push_subscriptions").upsert(
-        { user_id: uid, endpoint: sub.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth },
-        { onConflict: "endpoint" }
-      );
-      if (error) throw error;
-      setSt("on");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Échec de l’activation");
     } finally {
@@ -68,14 +80,11 @@ export default function PushToggle() {
   }
 
   async function disable() {
+    const os = osRef.current;
+    if (!os) return;
     setBusy(true);
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      if (sub) {
-        await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-        await sub.unsubscribe();
-      }
+      await os.User.PushSubscription.optOut();
       setSt("off");
     } finally {
       setBusy(false);
