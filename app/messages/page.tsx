@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import PushToggle from "@/components/PushToggle";
 
 type Person = { id: string; full_name: string | null; avatar_url: string | null };
 type Conv = { id: string; user_a: string; user_b: string; last_message_at: string };
@@ -78,6 +79,7 @@ export default function MessagesPage() {
   return (
     <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6">
       <h1 className="text-xl font-semibold text-ink-900">Messages</h1>
+      <div className="mt-3"><PushToggle /></div>
       <div className="mt-4 flex gap-4 border-b border-beige-200 text-sm">
         <button onClick={() => setTab("actives")} className={"pb-2 " + (tab === "actives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Conversations</button>
         <button onClick={() => setTab("archives")} className={"pb-2 " + (tab === "archives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Archivées{nArch > 0 ? " (" + nArch + ")" : ""}</button>
