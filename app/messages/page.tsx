@@ -7,7 +7,8 @@ import { supabase } from "@/lib/supabase";
 type Person = { id: string; full_name: string | null; avatar_url: string | null };
 type Conv = { id: string; user_a: string; user_b: string; last_message_at: string };
 type Msg = { conversation_id: string; sender_id: string; body: string | null; audio_path: string | null; read_at: string | null; created_at: string; deleted_at: string | null; media_path: string | null };
-type Row = { id: string; other: string; last: string; at: string; unread: number };
+type St = { conversation_id: string; archived: boolean; cleared_at: string | null };
+type Row = { id: string; other: string; last: string; at: string; unread: number; archived: boolean };
 
 export default function MessagesPage() {
   const [me, setMe] = useState<string | null>(null);
@@ -15,6 +16,7 @@ export default function MessagesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [workers, setWorkers] = useState<Person[]>([]);
   const [q, setQ] = useState("");
+  const [tab, setTab] = useState<"actives" | "archives">("actives");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,22 +33,30 @@ export default function MessagesPage() {
       setWorkers(list.filter((p) => p.id !== uid));
       const { data: convs } = await supabase.from("conversations").select("id, user_a, user_b, last_message_at").order("last_message_at", { ascending: false });
       const cl = (convs ?? []) as Conv[];
+      const { data: sts } = await supabase.from("conversation_user_state").select("conversation_id, archived, cleared_at");
+      const stMap: Record<string, St> = {};
+      ((sts ?? []) as St[]).forEach((x) => { stMap[x.conversation_id] = x; });
       let msgs: Msg[] = [];
       if (cl.length) {
         const r = await supabase.from("messages").select("conversation_id, sender_id, body, audio_path, read_at, created_at, deleted_at, media_path").in("conversation_id", cl.map((c) => c.id)).order("created_at", { ascending: false }).limit(500);
         msgs = (r.data ?? []) as Msg[];
       }
-      setRows(cl.map((c) => {
-        const mine = msgs.filter((m) => m.conversation_id === c.id);
+      const out: Row[] = [];
+      cl.forEach((c) => {
+        const st = stMap[c.id];
+        const mine = msgs.filter((m) => m.conversation_id === c.id && (!st?.cleared_at || m.created_at > st.cleared_at));
+        if (st?.cleared_at && mine.length === 0) return;
         const last = mine[0];
-        return {
+        out.push({
           id: c.id,
           other: c.user_a === uid ? c.user_b : c.user_a,
           last: last ? (last.deleted_at ? "🚫 Message supprimé" : last.body ?? (last.media_path ? "📎 Fichier" : "🎤 Message vocal")) : "Nouvelle conversation",
           at: c.last_message_at,
-          unread: mine.filter((m) => m.sender_id !== uid && !m.read_at).length,
-        };
-      }));
+          unread: mine.filter((m) => m.sender_id !== uid && !m.read_at && !m.deleted_at).length,
+          archived: !!st?.archived,
+        });
+      });
+      setRows(out);
       setLoading(false);
     })();
   }, []);
@@ -59,15 +69,22 @@ export default function MessagesPage() {
   };
   const when = (d: string) => new Date(d).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
   const filtered = workers.filter((w) => (w.full_name ?? "").toLowerCase().includes(q.toLowerCase()));
+  const shown = rows.filter((r) => (tab === "archives") === r.archived);
+  const nArch = rows.filter((r) => r.archived).length;
 
   if (loading) return <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6 text-ink-600">Chargement…</main>;
   if (!me) return <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6"><Link href="/" className="text-wine-700 underline">Connecte-toi pour voir tes messages</Link></main>;
+
   return (
     <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6">
       <h1 className="text-xl font-semibold text-ink-900">Messages</h1>
+      <div className="mt-4 flex gap-4 border-b border-beige-200 text-sm">
+        <button onClick={() => setTab("actives")} className={"pb-2 " + (tab === "actives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Conversations</button>
+        <button onClick={() => setTab("archives")} className={"pb-2 " + (tab === "archives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Archivées{nArch > 0 ? " (" + nArch + ")" : ""}</button>
+      </div>
       <div className="mt-4 space-y-2">
-        {rows.length === 0 && <p className="text-sm text-ink-400">Aucune conversation pour l’instant.</p>}
-        {rows.map((r) => (
+        {shown.length === 0 && <p className="text-sm text-ink-400">{tab === "archives" ? "Aucune conversation archivée." : "Aucune conversation pour l’instant."}</p>}
+        {shown.map((r) => (
           <Link key={r.id} href={`/messages/${r.id}`} className="flex items-center gap-3 rounded-md bg-white p-3 shadow-sm">
             {avatar(r.other)}
             <div className="min-w-0 flex-1">

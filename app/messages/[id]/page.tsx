@@ -28,6 +28,15 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
   const [online, setOnline] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [menuTop, setMenuTop] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
+  const [cleared, setCleared] = useState<string | null>(null);
+  const [archived, setArchived] = useState(false);
+  const [iBlocked, setIBlocked] = useState(false);
+  const [blockedMe, setBlockedMe] = useState(false);
+  const [panel, setPanel] = useState<"" | "delete" | "block" | "report">("");
+  const [reason, setReason] = useState("");
   const [sheet, setSheet] = useState(false);
   const [busy, setBusy] = useState(false);
   const [zoom, setZoom] = useState<string | null>(null);
@@ -60,6 +69,13 @@ export default function ChatPage() {
       const otherId = c.user_a === uid ? c.user_b : c.user_a;
       const { data: p } = await supabase.from("worker_directory").select("id, full_name, avatar_url").eq("id", otherId).single();
       setOther((p as Person | null) ?? { id: otherId, full_name: "Travailleur", avatar_url: null });
+      const { data: st } = await supabase.from("conversation_user_state").select("archived, cleared_at").eq("conversation_id", id).eq("user_id", uid).maybeSingle();
+      setCleared(st?.cleared_at ?? null);
+      setArchived(st?.archived ?? false);
+      const { data: bl } = await supabase.from("blocks").select("blocker_id, blocked_id");
+      const rel = (bl ?? []).filter((b) => b.blocker_id === otherId || b.blocked_id === otherId);
+      setIBlocked(rel.some((b) => b.blocker_id === uid));
+      setBlockedMe(rel.some((b) => b.blocker_id === otherId));
       const { data: ms } = await supabase.from("messages").select("*").eq("conversation_id", id).order("created_at", { ascending: true });
       setMsgs((ms ?? []) as Msg[]);
       const { data: rs } = await supabase.from("message_reactions").select("*").eq("conversation_id", id);
@@ -252,6 +268,49 @@ export default function ChatPage() {
     e.target.value = "";
   }
 
+  async function saveState(patch: { archived?: boolean; cleared_at?: string | null }) {
+    if (!me) return;
+    const { error: err } = await supabase.from("conversation_user_state").upsert({ conversation_id: id, user_id: me, ...patch });
+    if (err) setError("Action impossible : " + err.message);
+  }
+
+  async function toggleArchive() {
+    setMenuTop(false);
+    const next = !archived;
+    await saveState({ archived: next });
+    setArchived(next);
+  }
+
+  async function clearChat() {
+    setPanel("");
+    await saveState({ cleared_at: new Date().toISOString(), archived: false });
+    window.location.href = "/messages";
+  }
+
+  async function doBlock() {
+    if (!me || !other) return;
+    setPanel("");
+    const { error: err } = await supabase.from("blocks").insert({ blocker_id: me, blocked_id: other.id });
+    if (err) { setError("Blocage impossible : " + err.message); return; }
+    setIBlocked(true);
+  }
+
+  async function doUnblock() {
+    if (!me || !other) return;
+    const { error: err } = await supabase.from("blocks").delete().eq("blocker_id", me).eq("blocked_id", other.id);
+    if (err) { setError("Déblocage impossible : " + err.message); return; }
+    setIBlocked(false);
+  }
+
+  async function sendReport() {
+    if (!me || !other || !reason) return;
+    const { error: err } = await supabase.from("reports").insert({ reporter_id: me, reported_id: other.id, conversation_id: id, reason });
+    setPanel("");
+    setReason("");
+    if (err) { setError("Signalement impossible : " + err.message); return; }
+    alert("Signalement envoyé à l’équipe. Merci.");
+  }
+
   const fmt = (n: number) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
   const time = (d: string) => new Date(d).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   const reactLine = (mid: string) => {
@@ -261,6 +320,7 @@ export default function ChatPage() {
   };
   const preview = (m: Msg | undefined) => (!m ? "Message" : m.deleted_at ? "🚫 Message supprimé" : m.body ?? (m.media_path ? (m.media_type === "image" ? "📷 Photo" : m.media_type === "video" ? "🎥 Vidéo" : "📎 " + (m.media_name ?? "Document")) : "🎤 Message vocal"));
 
+  const visible = msgs.filter((m) => (!cleared || m.created_at > cleared) && (!query.trim() || (m.body ?? m.media_name ?? "").toLowerCase().includes(query.trim().toLowerCase())));
   if (!me) return <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6 text-ink-600">{error || "Chargement…"}</main>;
 
   return (
@@ -268,13 +328,20 @@ export default function ChatPage() {
       <header className="flex items-center gap-3 border-b border-ink-400/20 bg-white px-4 py-3">
         <Link href="/messages" className="text-ink-600">←</Link>
         {other?.avatar_url ? <img src={other.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" /> : <div className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-100 font-semibold text-wine-700">{(other?.full_name ?? "?").charAt(0).toUpperCase()}</div>}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="font-medium leading-tight text-ink-900">{other?.full_name ?? "…"}</p>
           <p className="text-xs text-ink-400">{typing ? "écrit…" : online ? "en ligne" : ""}</p>
         </div>
+        <button onClick={() => setMenuTop(true)} aria-label="Options" className="px-2 text-2xl text-ink-600">⋮</button>
       </header>
+      {searching && (
+        <div className="flex items-center gap-2 border-b border-ink-400/20 bg-white px-4 py-2">
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher dans la conversation" className="flex-1 rounded-full border border-ink-400/30 px-4 py-2 text-sm" autoFocus />
+          <button onClick={() => { setSearching(false); setQuery(""); }} className="px-2 text-ink-600">✕</button>
+        </div>
+      )}
       <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
-        {msgs.map((m) => {
+        {visible.map((m) => {
           const mine = m.sender_id === me;
           const rl = reactLine(m.id);
           const q = m.reply_to ? msgs.find((x) => x.id === m.reply_to) : undefined;
@@ -360,6 +427,46 @@ export default function ChatPage() {
           <button onClick={() => setReplyTo(null)}>✕</button>
         </div>
       )}
+      {menuTop && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setMenuTop(false)}>
+          <div className="mx-auto w-full max-w-md rounded-t-xl bg-white p-3" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => { setMenuTop(false); setSearching(true); }} className="block w-full px-4 py-3 text-left text-ink-900">🔍 Rechercher</button>
+            <button onClick={toggleArchive} className="block w-full px-4 py-3 text-left text-ink-900">{archived ? "📂 Désarchiver" : "🗄️ Archiver"}</button>
+            <button onClick={() => { setMenuTop(false); setPanel("delete"); }} className="block w-full px-4 py-3 text-left text-ink-900">🗑️ Supprimer la conversation</button>
+            <button onClick={() => { setMenuTop(false); if (iBlocked) doUnblock(); else setPanel("block"); }} className="block w-full px-4 py-3 text-left text-ink-900">{iBlocked ? "✅ Débloquer" : "🚫 Bloquer"}</button>
+            <button onClick={() => { setMenuTop(false); setPanel("report"); }} className="block w-full px-4 py-3 text-left text-wine-700">⚠️ Signaler</button>
+            <button onClick={() => setMenuTop(false)} className="block w-full px-4 py-3 text-left text-ink-600">Annuler</button>
+          </div>
+        </div>
+      )}
+      {panel !== "" && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setPanel("")}>
+          <div className="mx-auto w-full max-w-md rounded-t-xl bg-white p-4" onClick={(e) => e.stopPropagation()}>
+            {panel === "delete" && (
+              <>
+                <p className="mb-3 text-sm text-ink-600">Supprimer cette conversation ? Les messages disparaissent pour toi seulement. {other?.full_name ?? "Ton correspondant"} les garde.</p>
+                <button onClick={clearChat} className="block w-full rounded-md bg-wine-700 py-3 text-center text-white">Supprimer</button>
+              </>
+            )}
+            {panel === "block" && (
+              <>
+                <p className="mb-3 text-sm text-ink-600">Bloquer {other?.full_name ?? "ce contact"} ? Vous ne pourrez plus vous écrire. Tu pourras le débloquer à tout moment.</p>
+                <button onClick={doBlock} className="block w-full rounded-md bg-wine-700 py-3 text-center text-white">Bloquer</button>
+              </>
+            )}
+            {panel === "report" && (
+              <>
+                <p className="mb-2 text-sm text-ink-600">Pourquoi signales-tu {other?.full_name ?? "ce contact"} ?</p>
+                {["Spam ou publicité", "Harcèlement ou insultes", "Arnaque ou fraude", "Contenu inapproprié", "Autre"].map((r) => (
+                  <button key={r} onClick={() => setReason(r)} className={"block w-full px-3 py-2 text-left text-sm " + (reason === r ? "font-medium text-wine-700" : "text-ink-900")}>{reason === r ? "● " : "○ "}{r}</button>
+                ))}
+                <button onClick={sendReport} disabled={!reason} className="mt-3 block w-full rounded-md bg-wine-700 py-3 text-center text-white disabled:opacity-50">Envoyer le signalement</button>
+              </>
+            )}
+            <button onClick={() => setPanel("")} className="mt-2 block w-full py-3 text-center text-ink-600">Annuler</button>
+          </div>
+        </div>
+      )}
       {zoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={() => setZoom(null)}>
           <img src={zoom} alt="" className="max-h-full max-w-full" />
@@ -376,7 +483,13 @@ export default function ChatPage() {
       )}
       <input ref={photoRef} type="file" accept="image/*,video/*" onChange={pick} className="hidden" />
       <input ref={docRef} type="file" onChange={pick} className="hidden" />
-      <footer className="flex items-center gap-2 border-t border-ink-400/20 bg-white px-3 py-3">
+      {(iBlocked || blockedMe) && (
+        <div className="flex items-center justify-between gap-3 border-t border-ink-400/20 bg-beige-200 px-4 py-3 text-sm text-ink-600">
+          <span>{iBlocked ? "Tu as bloqué ce contact." : "Tu ne peux pas envoyer de message à ce contact."}</span>
+          {iBlocked && <button onClick={doUnblock} className="font-medium text-wine-700">Débloquer</button>}
+        </div>
+      )}
+      <footer style={{ display: iBlocked || blockedMe ? "none" : undefined }} className="flex items-center gap-2 border-t border-ink-400/20 bg-white px-3 py-3">
         {recording ? (
           <>
             <button onClick={() => stopRec(true)} className="px-2 text-ink-600">✕</button>
