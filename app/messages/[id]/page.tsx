@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Person = { id: string; full_name: string | null; avatar_url: string | null };
-type Msg = { id: string; conversation_id: string; sender_id: string; body: string | null; audio_path: string | null; audio_seconds: number | null; read_at: string | null; created_at: string; edited_at: string | null; deleted_at: string | null; reply_to: string | null };
+type Msg = { id: string; conversation_id: string; sender_id: string; body: string | null; audio_path: string | null; audio_seconds: number | null; read_at: string | null; created_at: string; edited_at: string | null; deleted_at: string | null; reply_to: string | null; media_path: string | null; media_type: string | null; media_name: string | null };
 type Reaction = { message_id: string; conversation_id: string; user_id: string; emoji: string };
 
 const EDIT_MS = 15 * 60 * 1000;
@@ -28,6 +28,11 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
   const [online, setOnline] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [sheet, setSheet] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [zoom, setZoom] = useState<string | null>(null);
+  const photoRef = useRef<HTMLInputElement | null>(null);
+  const docRef = useRef<HTMLInputElement | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -97,6 +102,11 @@ export default function ChatPage() {
       if (data?.signedUrl) setUrls((u) => ({ ...u, [m.audio_path as string]: data.signedUrl }));
     });
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    msgs.forEach(async (m) => {
+      if (!m.media_path || urls[m.media_path]) return;
+      const { data } = await supabase.storage.from("chatfiles").createSignedUrl(m.media_path, 3600);
+      if (data?.signedUrl) setUrls((u) => ({ ...u, [m.media_path as string]: data.signedUrl }));
+    });
   }, [msgs, urls]);
 
   function notifyTyping() {
@@ -132,7 +142,8 @@ export default function ChatPage() {
     setMenu(null);
     setError("");
     if (m.audio_path) await supabase.storage.from("voice").remove([m.audio_path]);
-    const { data, error: err } = await supabase.from("messages").update({ body: null, audio_path: null, audio_seconds: null, deleted_at: new Date().toISOString() }).eq("id", m.id).select().single();
+    if (m.media_path) await supabase.storage.from("chatfiles").remove([m.media_path]);
+    const { data, error: err } = await supabase.from("messages").update({ body: null, audio_path: null, audio_seconds: null, media_path: null, media_type: null, media_name: null, deleted_at: new Date().toISOString() }).eq("id", m.id).select().single();
     if (err) { setError("Suppression impossible : " + err.message); return; }
     addMsg(data as Msg);
   }
@@ -216,6 +227,31 @@ export default function ChatPage() {
     addMsg(data as Msg);
   }
 
+  async function sendFile(file: File | undefined, kind: "image" | "video" | "file") {
+    setSheet(false);
+    if (!file || !me) return;
+    if (file.size > 25 * 1024 * 1024) { setError("Fichier trop lourd (25 Mo maximum)."); return; }
+    setBusy(true);
+    setError("");
+    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${id}/${Date.now()}-${safe}`;
+    const { error: upErr } = await supabase.storage.from("chatfiles").upload(path, file, { contentType: file.type || "application/octet-stream" });
+    if (upErr) { setBusy(false); setError("Envoi impossible : " + upErr.message); return; }
+    const reply = replyTo?.id ?? null;
+    setReplyTo(null);
+    const { data, error: err } = await supabase.from("messages").insert({ conversation_id: id, sender_id: me, media_path: path, media_type: kind, media_name: file.name, reply_to: reply }).select().single();
+    setBusy(false);
+    if (err) { setError("Envoi impossible : " + err.message); return; }
+    addMsg(data as Msg);
+  }
+
+  function pick(e: { target: HTMLInputElement }) {
+    const f = e.target.files?.[0];
+    const t = f?.type.startsWith("image/") ? "image" : f?.type.startsWith("video/") ? "video" : "file";
+    sendFile(f, t);
+    e.target.value = "";
+  }
+
   const fmt = (n: number) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
   const time = (d: string) => new Date(d).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   const reactLine = (mid: string) => {
@@ -223,7 +259,7 @@ export default function ChatPage() {
     reacts.filter((r) => r.message_id === mid).forEach((r) => { c[r.emoji] = (c[r.emoji] ?? 0) + 1; });
     return Object.entries(c).map(([e, n]) => e + (n > 1 ? " " + n : "")).join("  ");
   };
-  const preview = (m: Msg | undefined) => (!m ? "Message" : m.deleted_at ? "🚫 Message supprimé" : m.body ?? "🎤 Message vocal");
+  const preview = (m: Msg | undefined) => (!m ? "Message" : m.deleted_at ? "🚫 Message supprimé" : m.body ?? (m.media_path ? (m.media_type === "image" ? "📷 Photo" : m.media_type === "video" ? "🎥 Vidéo" : "📎 " + (m.media_name ?? "Document")) : "🎤 Message vocal"));
 
   if (!me) return <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6 text-ink-600">{error || "Chargement…"}</main>;
 
@@ -264,6 +300,19 @@ export default function ChatPage() {
                     <>
                       {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
                       {m.audio_path && (urls[m.audio_path] ? <audio controls src={urls[m.audio_path]} className="h-10 max-w-full" /> : <span>🎤 Chargement…</span>)}
+                      {m.media_path && (
+                        urls[m.media_path] ? (
+                          m.media_type === "image" ? (
+                            <img src={urls[m.media_path]} alt="" onClick={() => setZoom(urls[m.media_path as string])} className="max-h-64 rounded" />
+                          ) : m.media_type === "video" ? (
+                            <video controls src={urls[m.media_path]} className="max-h-64 rounded" />
+                          ) : (
+                            <a href={urls[m.media_path]} target="_blank" rel="noreferrer" className="flex items-center gap-2 underline">📎 {m.media_name ?? "Document"}</a>
+                          )
+                        ) : (
+                          <span>📎 Chargement…</span>
+                        )
+                      )}
                     </>
                   )}
                   <div className="mt-1 text-right text-[10px] opacity-80">{m.edited_at && !m.deleted_at ? "modifié · " : ""}{m.audio_seconds ? fmt(m.audio_seconds) + " · " : ""}{time(m.created_at)}{mine && !m.deleted_at && <span className={m.read_at ? "ml-1 text-sky-300" : "ml-1"}>{m.read_at ? "✓✓" : "✓"}</span>}</div>
@@ -311,6 +360,22 @@ export default function ChatPage() {
           <button onClick={() => setReplyTo(null)}>✕</button>
         </div>
       )}
+      {zoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={() => setZoom(null)}>
+          <img src={zoom} alt="" className="max-h-full max-w-full" />
+        </div>
+      )}
+      {sheet && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setSheet(false)}>
+          <div className="mx-auto w-full max-w-md rounded-t-xl bg-white p-3" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => photoRef.current?.click()} className="block w-full px-4 py-3 text-left text-ink-900">🖼️ Photo ou vidéo</button>
+            <button onClick={() => docRef.current?.click()} className="block w-full px-4 py-3 text-left text-ink-900">📄 Document</button>
+            <button onClick={() => setSheet(false)} className="block w-full px-4 py-3 text-left text-ink-600">Annuler</button>
+          </div>
+        </div>
+      )}
+      <input ref={photoRef} type="file" accept="image/*,video/*" onChange={pick} className="hidden" />
+      <input ref={docRef} type="file" onChange={pick} className="hidden" />
       <footer className="flex items-center gap-2 border-t border-ink-400/20 bg-white px-3 py-3">
         {recording ? (
           <>
@@ -320,6 +385,7 @@ export default function ChatPage() {
           </>
         ) : (
           <>
+            <button onClick={() => setSheet(true)} disabled={busy} aria-label="Joindre un fichier" className="px-1 text-2xl text-wine-700">{busy ? "…" : "+"}</button>
             <input value={text} onChange={(e) => { setText(e.target.value); notifyTyping(); }} onKeyDown={(e) => { if (e.key === "Enter") sendText(); }} placeholder="Écrire un message" className="flex-1 rounded-full border border-ink-400/30 px-4 py-2 text-sm" />
             {text.trim() || editing ? <button onClick={sendText} className="rounded-full bg-wine-700 px-4 py-2 text-sm text-white">{editing ? "Enregistrer" : "Envoyer"}</button> : <button onClick={startRec} aria-label="Message vocal" className="rounded-full bg-wine-700 px-3 py-2 text-white">🎤</button>}
           </>
