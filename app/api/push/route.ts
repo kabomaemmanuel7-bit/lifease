@@ -8,7 +8,7 @@ const APP_ID = "95d2689c-f0fa-4efb-b9ad-9739654de145";
 const SITE = "https://lifease-orpin.vercel.app";
 
 export async function POST(req: Request) {
-  const secret = process.env.PUSH_WEBHOOK_SECRET;
+  const secret = process.env.PUSH_WEBHOOK_SECRET?.trim();
   if (!secret || req.headers.get("x-webhook-secret") !== secret) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
