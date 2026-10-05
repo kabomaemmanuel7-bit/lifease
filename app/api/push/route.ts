@@ -10,7 +10,7 @@ const SITE = "https://lifease-orpin.vercel.app";
 export async function POST(req: Request) {
   const secret = process.env.PUSH_WEBHOOK_SECRET?.trim();
   if (!secret || req.headers.get("x-webhook-secret") !== secret) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "unauthorized", a: secret ? secret.length : -1, b: (req.headers.get("x-webhook-secret") || "").length }, { status: 401 });
   }
   const payload = await req.json();
   const m = payload?.record;
