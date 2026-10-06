@@ -36,6 +36,7 @@ export default function GroupChatPage() {
   const [viewer, setViewer] = useState<{ url: string; kind: string; name: string } | null>(null);
   const [fwd, setFwd] = useState<string[] | null>(null);
   const [targets, setTargets] = useState<{ id: string; title: string; group: boolean }[]>([]);
+  const [pickT, setPickT] = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const photoRef = useRef<HTMLInputElement | null>(null);
   const docRef = useRef<HTMLInputElement | null>(null);
@@ -268,6 +269,7 @@ export default function GroupChatPage() {
   async function openForward(ids: string[]) {
     setMenu(null);
     setFwd(ids);
+    setPickT([]);
     const { data: cs } = await supabase.from("conversations").select("id, is_group, name, user_a, user_b");
     const rows = (cs ?? []) as { id: string; is_group: boolean | null; name: string | null; user_a: string | null; user_b: string | null }[];
     const others = rows.filter((c) => !c.is_group).map((c) => (c.user_a === me ? c.user_b : c.user_a)).filter(Boolean) as string[];
@@ -277,14 +279,14 @@ export default function GroupChatPage() {
     setTargets(rows.map((c) => (c.is_group ? { id: c.id, title: c.name ?? "Groupe", group: true } : { id: c.id, title: nm[(c.user_a === me ? c.user_b : c.user_a) ?? ""] ?? "Contact", group: false })));
   }
 
-  async function forwardTo(cid: string) {
+  async function forwardTo(cids: string[]) {
     const ids = fwd ?? [];
     setFwd(null);
     stopSelect();
     if (!me) return;
     setBusy(true);
     setError("");
-    for (const m of msgs.filter((x) => ids.includes(x.id) && !x.deleted_at)) {
+    for (const cid of cids) for (const m of msgs.filter((x) => ids.includes(x.id) && !x.deleted_at)) {
       const row: Record<string, unknown> = { conversation_id: cid, sender_id: me, body: m.body };
       const tag = Date.now() + "-" + Math.random().toString(36).slice(2, 6);
       if (m.audio_path) {
@@ -434,8 +436,9 @@ export default function GroupChatPage() {
             <p className="px-4 pb-1 pt-2 text-sm text-ink-600">Transférer à…</p>
             {targets.length === 0 && <p className="px-4 py-3 text-ink-600">Chargement…</p>}
             {targets.map((t) => (
-              <button key={t.id} onClick={() => forwardTo(t.id)} className="block w-full px-4 py-3 text-left text-ink-900">{t.group ? "👥 " : "👤 "}{t.title}</button>
+              <button key={t.id} onClick={() => setPickT(pickT.includes(t.id) ? pickT.filter((x) => x !== t.id) : [...pickT, t.id])} className="block w-full px-4 py-3 text-left text-ink-900">{pickT.includes(t.id) ? "✅ " : "⬜ "}{t.group ? "👥 " : "👤 "}{t.title}</button>
             ))}
+            {pickT.length > 0 && <button onClick={() => forwardTo(pickT)} className="block w-full rounded-full bg-wine-700 px-4 py-3 text-center text-white">Envoyer à {pickT.length} conversation{pickT.length > 1 ? "s" : ""}</button>}
             <button onClick={() => setFwd(null)} className="block w-full px-4 py-3 text-left text-ink-600">Annuler</button>
           </div>
         </div>
