@@ -52,6 +52,13 @@ export default function GroupChatPage() {
   useEffect(() => { replyRef.current = replyTo?.id ?? null; }, [replyTo]);
 
   useEffect(() => {
+    if (!viewer) return;
+    const onPop = () => setViewer(null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [viewer]);
+
+  useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     (async () => {
       const { data: s } = await supabase.auth.getSession();
@@ -258,7 +265,7 @@ export default function GroupChatPage() {
 
   function openMedia(m: Msg) {
     const u = m.media_path ? urls[m.media_path] : "";
-    if (u) setViewer({ url: u, kind: m.media_type ?? "file", name: m.media_name ?? "fichier" });
+    if (u) { history.pushState(null, ""); setViewer({ url: u, kind: m.media_type ?? "file", name: m.media_name ?? "fichier" }); }
   }
 
   const who = (uid: string) => people[uid]?.full_name ?? "Membre";
@@ -387,7 +394,7 @@ export default function GroupChatPage() {
       {viewer && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black">
           <div className="flex items-center justify-between px-4 py-3 text-white">
-            <button onClick={() => setViewer(null)} className="text-2xl">✕</button>
+            <button onClick={() => history.back()} className="text-2xl">✕</button>
             <a href={viewer.url} download={viewer.name} target="_blank" rel="noreferrer" className="text-2xl">⬇️</a>
           </div>
           <div className="flex flex-1 items-center justify-center overflow-hidden">
