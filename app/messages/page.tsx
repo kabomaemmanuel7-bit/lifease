@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import PushToggle from "@/components/PushToggle";
 
 type Person = { id: string; full_name: string | null; avatar_url: string | null };
-type Conv = { id: string; user_a: string | null; user_b: string | null; last_message_at: string; is_group: boolean; name: string | null };
+type Conv = { id: string; user_a: string | null; user_b: string | null; is_group: boolean | null; name: string | null; last_message_at: string };
 type Msg = { conversation_id: string; sender_id: string; body: string | null; audio_path: string | null; read_at: string | null; created_at: string; deleted_at: string | null; media_path: string | null };
 type St = { conversation_id: string; archived: boolean; cleared_at: string | null };
 type Row = { id: string; other: string; group: boolean; title: string; last: string; at: string; unread: number; archived: boolean };
@@ -32,11 +32,16 @@ export default function MessagesPage() {
       list.forEach((p) => { map[p.id] = p; });
       setPeople(map);
       setWorkers(list.filter((p) => p.id !== uid));
-      const { data: convs } = await supabase.from("conversations").select("id, user_a, user_b, last_message_at, is_group, name").order("last_message_at", { ascending: false });
+      const { data: convs } = await supabase.from("conversations").select("id, user_a, user_b, is_group, name, last_message_at").order("last_message_at", { ascending: false });
       const cl = (convs ?? []) as Conv[];
       const { data: sts } = await supabase.from("conversation_user_state").select("conversation_id, archived, cleared_at");
       const stMap: Record<string, St> = {};
       ((sts ?? []) as St[]).forEach((x) => { stMap[x.conversation_id] = x; });
+      const { data: grs } = await supabase.from("group_reads").select("conversation_id, last_read_at").eq("user_id", uid);
+      const { data: jn } = await supabase.from("conversation_members").select("conversation_id, joined_at").eq("user_id", uid);
+      const cut: Record<string, string> = {};
+      (jn ?? []).forEach((x) => { cut[x.conversation_id as string] = x.joined_at as string; });
+      (grs ?? []).forEach((x) => { cut[x.conversation_id as string] = x.last_read_at as string; });
       let msgs: Msg[] = [];
       if (cl.length) {
         const r = await supabase.from("messages").select("conversation_id, sender_id, body, audio_path, read_at, created_at, deleted_at, media_path").in("conversation_id", cl.map((c) => c.id)).order("created_at", { ascending: false }).limit(500);
@@ -48,12 +53,16 @@ export default function MessagesPage() {
         const mine = msgs.filter((m) => m.conversation_id === c.id && (!st?.cleared_at || m.created_at > st.cleared_at));
         if (st?.cleared_at && mine.length === 0) return;
         const last = mine[0];
+        const g = !!c.is_group;
+        const c0 = cut[c.id] ? new Date(cut[c.id]) : null;
         out.push({
           id: c.id,
-          other: (c.user_a === uid ? c.user_b : c.user_a) ?? "", group: !!c.is_group, title: c.name ?? "Groupe",
+          other: c.user_a === uid ? c.user_b ?? "" : c.user_a ?? "",
+          group: g,
+          title: c.name ?? "Groupe",
           last: last ? (last.deleted_at ? "🚫 Message supprimé" : last.body ?? (last.media_path ? "📎 Fichier" : "🎤 Message vocal")) : "Nouvelle conversation",
           at: c.last_message_at,
-          unread: c.is_group ? 0 : mine.filter((m) => m.sender_id !== uid && !m.read_at && !m.deleted_at).length,
+          unread: mine.filter((m) => m.sender_id !== uid && !m.deleted_at && (g ? !c0 || new Date(m.created_at) > c0 : !m.read_at)).length,
           archived: !!st?.archived,
         });
       });
@@ -78,7 +87,10 @@ export default function MessagesPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6">
-      <div className="flex items-center justify-between"><h1 className="text-xl font-semibold text-ink-900">Messages</h1><Link href="/groupes/nouveau" className="rounded-md border border-wine-100 bg-wine-50 px-3 py-1 text-sm text-wine-700">👥 Nouveau groupe</Link></div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-ink-900">Messages</h1>
+        <Link href="/groupes/nouveau" className="text-sm font-medium text-wine-700">👥 Nouveau groupe</Link>
+      </div>
       <div className="mt-3"><PushToggle /></div>
       <div className="mt-4 flex gap-4 border-b border-beige-200 text-sm">
         <button onClick={() => setTab("actives")} className={"pb-2 " + (tab === "actives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Conversations</button>

@@ -17,6 +17,8 @@ export default function GroupChatPage() {
   const [me, setMe] = useState<string | null>(null);
   const [name, setName] = useState("Groupe");
   const [count, setCount] = useState(0);
+  const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [reads, setReads] = useState<Record<string, string>>({});
   const [people, setPeople] = useState<Record<string, Person>>({});
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [reacts, setReacts] = useState<Reaction[]>([]);
@@ -74,6 +76,7 @@ export default function GroupChatPage() {
       const { data: mem } = await supabase.from("conversation_members").select("user_id").eq("conversation_id", id);
       const ids = (mem ?? []).map((x) => x.user_id as string);
       setCount(ids.length);
+      setMemberIds(ids);
       const { data: dir } = await supabase.from("worker_directory").select("id, full_name").in("id", ids);
       const map: Record<string, Person> = {};
       ((dir ?? []) as Person[]).forEach((p) => { map[p.id] = p; });
@@ -84,9 +87,14 @@ export default function GroupChatPage() {
       setReacts((rs ?? []) as Reaction[]);
       const { data: hs } = await supabase.from("message_hidden").select("message_id");
       setHidden((hs ?? []).map((x) => x.message_id as string));
+      const { data: gr } = await supabase.from("group_reads").select("user_id, last_read_at").eq("conversation_id", id);
+      const rmap: Record<string, string> = {};
+      (gr ?? []).forEach((x) => { rmap[x.user_id as string] = x.last_read_at as string; });
+      setReads(rmap);
+      supabase.rpc("mark_group_read", { p_conv: id }).then(() => {});
       channel = supabase
         .channel("grp-" + id)
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + id }, (p) => addMsg(p.new as Msg))
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + id }, (p) => { addMsg(p.new as Msg); if ((p.new as Msg).sender_id !== uid) supabase.rpc("mark_group_read", { p_conv: id }).then(() => {}); })
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: "conversation_id=eq." + id }, (p) => addMsg(p.new as Msg))
         .on("postgres_changes", { event: "*", schema: "public", table: "message_reactions", filter: "conversation_id=eq." + id }, (p) => {
           if (p.eventType === "DELETE") {
@@ -96,6 +104,10 @@ export default function GroupChatPage() {
             const r = p.new as Reaction;
             setReacts((prev) => [...prev.filter((x) => !(x.message_id === r.message_id && x.user_id === r.user_id)), r]);
           }
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "group_reads", filter: "conversation_id=eq." + id }, (p) => {
+          const r = p.new as { user_id?: string; last_read_at?: string };
+          if (r.user_id && r.last_read_at) setReads((prev) => ({ ...prev, [r.user_id as string]: r.last_read_at as string }));
         })
         .subscribe();
     })();
@@ -323,6 +335,11 @@ export default function GroupChatPage() {
     reacts.filter((r) => r.message_id === mid).forEach((r) => { c[r.emoji] = (c[r.emoji] ?? 0) + 1; });
     return Object.entries(c).map(([e, n]) => e + (n > 1 ? " " + n : "")).join("  ");
   };
+  const tick = (m: Msg) => {
+    const others = memberIds.filter((u) => u !== me);
+    const n = others.filter((u) => reads[u] && new Date(reads[u]) >= new Date(m.created_at)).length;
+    return <span className={n > 0 && n === others.length ? "ml-1 text-sky-300" : "ml-1"}>{n > 0 ? "✓✓" : "✓"}</span>;
+  };
   const preview = (m: Msg | undefined) => (!m ? "Message" : m.deleted_at ? "🚫 Message supprimé" : m.body ?? (m.media_path ? (m.media_type === "image" ? "📷 Photo" : m.media_type === "video" ? "🎥 Vidéo" : "📎 " + (m.media_name ?? "Document")) : "🎤 Message vocal"));
   const visible = msgs.filter((m) => !hidden.includes(m.id));
   const canAll = !!delIds && delIds.every((mid) => { const x = msgs.find((y) => y.id === mid); return !!x && x.sender_id === me && !x.deleted_at; });
@@ -398,7 +415,7 @@ export default function GroupChatPage() {
                         )}
                       </>
                     )}
-                    <div className="mt-1 text-right text-[10px] opacity-80">{m.audio_seconds ? fmt(m.audio_seconds) + " · " : ""}{time(m.created_at)}</div>
+                    <div className="mt-1 text-right text-[10px] opacity-80">{m.audio_seconds ? fmt(m.audio_seconds) + " · " : ""}{time(m.created_at)}{mine && !m.deleted_at && tick(m)}</div>
                   </div>
                 </div>
                 {rl && !m.deleted_at && (
