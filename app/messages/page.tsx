@@ -6,10 +6,10 @@ import { supabase } from "@/lib/supabase";
 import PushToggle from "@/components/PushToggle";
 
 type Person = { id: string; full_name: string | null; avatar_url: string | null };
-type Conv = { id: string; user_a: string; user_b: string; last_message_at: string };
+type Conv = { id: string; user_a: string | null; user_b: string | null; last_message_at: string; is_group: boolean; name: string | null };
 type Msg = { conversation_id: string; sender_id: string; body: string | null; audio_path: string | null; read_at: string | null; created_at: string; deleted_at: string | null; media_path: string | null };
 type St = { conversation_id: string; archived: boolean; cleared_at: string | null };
-type Row = { id: string; other: string; last: string; at: string; unread: number; archived: boolean };
+type Row = { id: string; other: string; group: boolean; title: string; last: string; at: string; unread: number; archived: boolean };
 
 export default function MessagesPage() {
   const [me, setMe] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export default function MessagesPage() {
       list.forEach((p) => { map[p.id] = p; });
       setPeople(map);
       setWorkers(list.filter((p) => p.id !== uid));
-      const { data: convs } = await supabase.from("conversations").select("id, user_a, user_b, last_message_at").order("last_message_at", { ascending: false });
+      const { data: convs } = await supabase.from("conversations").select("id, user_a, user_b, last_message_at, is_group, name").order("last_message_at", { ascending: false });
       const cl = (convs ?? []) as Conv[];
       const { data: sts } = await supabase.from("conversation_user_state").select("conversation_id, archived, cleared_at");
       const stMap: Record<string, St> = {};
@@ -50,10 +50,10 @@ export default function MessagesPage() {
         const last = mine[0];
         out.push({
           id: c.id,
-          other: c.user_a === uid ? c.user_b : c.user_a,
+          other: (c.user_a === uid ? c.user_b : c.user_a) ?? "", group: !!c.is_group, title: c.name ?? "Groupe",
           last: last ? (last.deleted_at ? "🚫 Message supprimé" : last.body ?? (last.media_path ? "📎 Fichier" : "🎤 Message vocal")) : "Nouvelle conversation",
           at: c.last_message_at,
-          unread: mine.filter((m) => m.sender_id !== uid && !m.read_at && !m.deleted_at).length,
+          unread: c.is_group ? 0 : mine.filter((m) => m.sender_id !== uid && !m.read_at && !m.deleted_at).length,
           archived: !!st?.archived,
         });
       });
@@ -78,7 +78,7 @@ export default function MessagesPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6">
-      <h1 className="text-xl font-semibold text-ink-900">Messages</h1>
+      <div className="flex items-center justify-between"><h1 className="text-xl font-semibold text-ink-900">Messages</h1><Link href="/groupes/nouveau" className="rounded-md border border-wine-100 bg-wine-50 px-3 py-1 text-sm text-wine-700">👥 Nouveau groupe</Link></div>
       <div className="mt-3"><PushToggle /></div>
       <div className="mt-4 flex gap-4 border-b border-beige-200 text-sm">
         <button onClick={() => setTab("actives")} className={"pb-2 " + (tab === "actives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Conversations</button>
@@ -87,10 +87,10 @@ export default function MessagesPage() {
       <div className="mt-4 space-y-2">
         {shown.length === 0 && <p className="text-sm text-ink-400">{tab === "archives" ? "Aucune conversation archivée." : "Aucune conversation pour l’instant."}</p>}
         {shown.map((r) => (
-          <Link key={r.id} href={`/messages/${r.id}`} className="flex items-center gap-3 rounded-md bg-white p-3 shadow-sm">
-            {avatar(r.other)}
+          <Link key={r.id} href={r.group ? `/messages/groupe/${r.id}` : `/messages/${r.id}`} className="flex items-center gap-3 rounded-md bg-white p-3 shadow-sm">
+            {r.group ? <div className="flex h-11 w-11 items-center justify-center rounded-full bg-wine-700 text-white">👥</div> : avatar(r.other)}
             <div className="min-w-0 flex-1">
-              <div className="flex justify-between gap-2"><span className="truncate font-medium text-ink-900">{name(r.other)}</span><span className="text-xs text-ink-400">{when(r.at)}</span></div>
+              <div className="flex justify-between gap-2"><span className="truncate font-medium text-ink-900">{r.group ? r.title : name(r.other)}</span><span className="text-xs text-ink-400">{when(r.at)}</span></div>
               <p className="truncate text-sm text-ink-600">{r.last}</p>
             </div>
             {r.unread > 0 && <span className="rounded-full bg-wine-700 px-2 py-0.5 text-xs text-white">{r.unread}</span>}

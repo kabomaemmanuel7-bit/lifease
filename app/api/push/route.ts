@@ -24,11 +24,22 @@ export async function POST(req: Request) {
   );
   const { data: conv } = await db
     .from("conversations")
-    .select("user_a,user_b")
+    .select("user_a,user_b,is_group,name")
     .eq("id", m.conversation_id)
     .maybeSingle();
   if (!conv) return NextResponse.json({ ok: true, skipped: "conv" });
-  const to = conv.user_a === m.sender_id ? conv.user_b : conv.user_a;
+  let to: string[] = [];
+  if (conv.is_group) {
+    const { data: mem } = await db
+      .from("conversation_members")
+      .select("user_id")
+      .eq("conversation_id", m.conversation_id);
+    to = (mem ?? []).map((x) => x.user_id as string).filter((u) => u !== m.sender_id);
+  } else {
+    const one = conv.user_a === m.sender_id ? conv.user_b : conv.user_a;
+    if (one) to = [one];
+  }
+  if (to.length === 0) return NextResponse.json({ ok: true, skipped: "nobody" });
   const { data: who } = await db
     .from("worker_directory")
     .select("full_name")
@@ -52,10 +63,10 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       app_id: APP_ID,
       target_channel: "push",
-      include_aliases: { external_id: [to] },
-      headings: { en: who?.full_name || "Nouveau message" },
+      include_aliases: { external_id: to },
+      headings: { en: conv.is_group ? `${conv.name ?? "Groupe"} · ${who?.full_name || "Membre"}` : who?.full_name || "Nouveau message" },
       contents: { en: text },
-      url: `${SITE}/messages/${m.conversation_id}`,
+      url: conv.is_group ? `${SITE}/messages/groupe/${m.conversation_id}` : `${SITE}/messages/${m.conversation_id}`,
     }),
   });
   const out = await res.text();
