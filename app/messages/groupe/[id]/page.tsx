@@ -34,6 +34,8 @@ export default function GroupChatPage() {
   const [delIds, setDelIds] = useState<string[] | null>(null);
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
   const [viewer, setViewer] = useState<{ url: string; kind: string; name: string } | null>(null);
+  const [fwd, setFwd] = useState<string[] | null>(null);
+  const [targets, setTargets] = useState<{ id: string; title: string; group: boolean }[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const photoRef = useRef<HTMLInputElement | null>(null);
   const docRef = useRef<HTMLInputElement | null>(null);
@@ -263,6 +265,49 @@ export default function GroupChatPage() {
     }
   }
 
+  async function openForward(ids: string[]) {
+    setMenu(null);
+    setFwd(ids);
+    const { data: cs } = await supabase.from("conversations").select("id, is_group, name, user_a, user_b");
+    const rows = (cs ?? []) as { id: string; is_group: boolean | null; name: string | null; user_a: string | null; user_b: string | null }[];
+    const others = rows.filter((c) => !c.is_group).map((c) => (c.user_a === me ? c.user_b : c.user_a)).filter(Boolean) as string[];
+    const { data: dir } = await supabase.from("worker_directory").select("id, full_name").in("id", others);
+    const nm: Record<string, string> = {};
+    ((dir ?? []) as Person[]).forEach((p) => { nm[p.id] = p.full_name ?? "Contact"; });
+    setTargets(rows.map((c) => (c.is_group ? { id: c.id, title: c.name ?? "Groupe", group: true } : { id: c.id, title: nm[(c.user_a === me ? c.user_b : c.user_a) ?? ""] ?? "Contact", group: false })));
+  }
+
+  async function forwardTo(cid: string) {
+    const ids = fwd ?? [];
+    setFwd(null);
+    stopSelect();
+    if (!me) return;
+    setBusy(true);
+    setError("");
+    for (const m of msgs.filter((x) => ids.includes(x.id) && !x.deleted_at)) {
+      const row: Record<string, unknown> = { conversation_id: cid, sender_id: me, body: m.body };
+      const tag = Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+      if (m.audio_path) {
+        const to = cid + "/" + tag + "." + m.audio_path.split(".").pop();
+        const { error: e1 } = await supabase.storage.from("voice").copy(m.audio_path, to);
+        if (e1) { setError("Transfert impossible : " + e1.message); break; }
+        row.audio_path = to;
+        row.audio_seconds = m.audio_seconds;
+      }
+      if (m.media_path) {
+        const to = cid + "/" + tag + "-" + (m.media_name ?? "fichier").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const { error: e2 } = await supabase.storage.from("chatfiles").copy(m.media_path, to);
+        if (e2) { setError("Transfert impossible : " + e2.message); break; }
+        row.media_path = to;
+        row.media_type = m.media_type;
+        row.media_name = m.media_name;
+      }
+      const { error: e3 } = await supabase.from("messages").insert(row);
+      if (e3) { setError("Transfert impossible : " + e3.message); break; }
+    }
+    setBusy(false);
+  }
+
   function openMedia(m: Msg) {
     const u = m.media_path ? urls[m.media_path] : "";
     if (u) { history.pushState(null, ""); setViewer({ url: u, kind: m.media_type ?? "file", name: m.media_name ?? "fichier" }); }
@@ -289,6 +334,7 @@ export default function GroupChatPage() {
           <button onClick={stopSelect} className="text-ink-600">✕</button>
           <p className="flex-1 font-medium text-ink-900">{sel.length} sélectionné{sel.length > 1 ? "s" : ""}</p>
           <button onClick={() => copyMsgs(sel)} aria-label="Copier" className="px-2 text-xl">📋</button>
+          <button onClick={() => openForward(sel)} aria-label="Transférer" className="px-2 text-xl">↪️</button>
           <button onClick={() => setDelIds(sel)} aria-label="Supprimer" className="px-2 text-xl">🗑️</button>
         </header>
       ) : (
@@ -375,9 +421,22 @@ export default function GroupChatPage() {
             </div>
             <button onClick={() => { setReplyTo(menu); setMenu(null); }} className="block w-full px-4 py-3 text-left text-ink-900">↩️ Répondre</button>
             {menu.body && <button onClick={() => copyMsgs([menu.id])} className="block w-full px-4 py-3 text-left text-ink-900">📋 Copier</button>}
+            <button onClick={() => openForward([menu.id])} className="block w-full px-4 py-3 text-left text-ink-900">↪️ Transférer</button>
             <button onClick={() => startSelect(menu)} className="block w-full px-4 py-3 text-left text-ink-900">☑️ Sélectionner</button>
             <button onClick={() => { setDelIds([menu.id]); setMenu(null); }} className="block w-full px-4 py-3 text-left text-wine-700">🗑️ Supprimer</button>
             <button onClick={() => setMenu(null)} className="block w-full px-4 py-3 text-left text-ink-600">Annuler</button>
+          </div>
+        </div>
+      )}
+      {fwd && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setFwd(null)}>
+          <div className="mx-auto max-h-[70dvh] w-full max-w-md overflow-y-auto rounded-t-xl bg-white p-3" onClick={(e) => e.stopPropagation()}>
+            <p className="px-4 pb-1 pt-2 text-sm text-ink-600">Transférer à…</p>
+            {targets.length === 0 && <p className="px-4 py-3 text-ink-600">Chargement…</p>}
+            {targets.map((t) => (
+              <button key={t.id} onClick={() => forwardTo(t.id)} className="block w-full px-4 py-3 text-left text-ink-900">{t.group ? "👥 " : "👤 "}{t.title}</button>
+            ))}
+            <button onClick={() => setFwd(null)} className="block w-full px-4 py-3 text-left text-ink-600">Annuler</button>
           </div>
         </div>
       )}
