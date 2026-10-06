@@ -343,10 +343,10 @@ export default function GroupChatPage() {
         <header className="flex items-center gap-3 border-b border-ink-400/20 bg-white px-4 py-3">
           <Link href="/messages" className="text-ink-600">←</Link>
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-700 text-white">👥</div>
-          <div className="min-w-0 flex-1">
+          <Link href={"/messages/groupe/" + id + "/infos"} className="min-w-0 flex-1">
             <p className="truncate font-medium leading-tight text-ink-900">{name}</p>
             <p className="text-xs text-ink-400">{count} membres</p>
-          </div>
+          </Link>
         </header>
       )}
       <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
