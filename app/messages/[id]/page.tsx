@@ -39,7 +39,14 @@ export default function ChatPage() {
   const [reason, setReason] = useState("");
   const [sheet, setSheet] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [zoom, setZoom] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<{ url: string; kind: string; name: string } | null>(null);
+  const [hidden, setHidden] = useState<string[]>([]);
+  const [sel, setSel] = useState<string[]>([]);
+  const [selMode, setSelMode] = useState(false);
+  const [delIds, setDelIds] = useState<string[] | null>(null);
+  const [fwd, setFwd] = useState<string[] | null>(null);
+  const [targets, setTargets] = useState<{ id: string; title: string; group: boolean }[]>([]);
+  const [pickT, setPickT] = useState<string[]>([]);
   const photoRef = useRef<HTMLInputElement | null>(null);
   const docRef = useRef<HTMLInputElement | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
@@ -80,6 +87,8 @@ export default function ChatPage() {
       setMsgs((ms ?? []) as Msg[]);
       const { data: rs } = await supabase.from("message_reactions").select("*").eq("conversation_id", id);
       setReacts((rs ?? []) as Reaction[]);
+      const { data: hs } = await supabase.from("message_hidden").select("message_id");
+      setHidden((hs ?? []).map((x) => x.message_id as string));
       await supabase.from("messages").update({ read_at: new Date().toISOString() }).eq("conversation_id", id).neq("sender_id", uid).is("read_at", null);
       const ch = supabase.channel("conv-" + id, { config: { presence: { key: uid } } });
       chanRef.current = ch;
@@ -124,6 +133,13 @@ export default function ChatPage() {
       if (data?.signedUrl) setUrls((u) => ({ ...u, [m.media_path as string]: data.signedUrl }));
     });
   }, [msgs, urls]);
+
+  useEffect(() => {
+    if (!viewer) return;
+    const onPop = () => setViewer(null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [viewer]);
 
   function notifyTyping() {
     const now = Date.now();
@@ -193,7 +209,7 @@ export default function ChatPage() {
   }
 
   function pressStart(m: Msg) {
-    if (m.deleted_at) return;
+    if (m.deleted_at || selMode) return;
     pressRef.current = setTimeout(() => setMenu(m), 450);
   }
 
@@ -311,6 +327,97 @@ export default function ChatPage() {
     alert("Signalement envoyé à l’équipe. Merci.");
   }
 
+  function toggleSel(mid: string) {
+    const next = sel.includes(mid) ? sel.filter((x) => x !== mid) : [...sel, mid];
+    setSel(next);
+    if (next.length === 0) setSelMode(false);
+  }
+
+  function startSelect(m: Msg) {
+    setMenu(null);
+    setSelMode(true);
+    setSel([m.id]);
+  }
+
+  function stopSelect() {
+    setSelMode(false);
+    setSel([]);
+  }
+
+  async function copyMsgs(ids: string[]) {
+    const t = msgs.filter((m) => ids.includes(m.id) && m.body && !m.deleted_at).map((m) => m.body).join("\n");
+    setMenu(null);
+    stopSelect();
+    if (!t) return;
+    try { await navigator.clipboard.writeText(t); } catch { setError("Copie impossible."); }
+  }
+
+  async function hideForMe(ids: string[]) {
+    setDelIds(null);
+    stopSelect();
+    if (!me || ids.length === 0) return;
+    const { error: err } = await supabase.from("message_hidden").upsert(ids.map((mid) => ({ message_id: mid, user_id: me })));
+    if (err) { setError("Suppression impossible : " + err.message); return; }
+    setHidden((prev) => [...prev, ...ids]);
+  }
+
+  async function deleteAll(ids: string[]) {
+    setDelIds(null);
+    stopSelect();
+    for (const m of msgs.filter((x) => ids.includes(x.id) && x.sender_id === me && !x.deleted_at)) await deleteMsg(m);
+  }
+
+  function openMedia(m: Msg) {
+    const u = m.media_path ? urls[m.media_path] : "";
+    if (u) { history.pushState(null, ""); setViewer({ url: u, kind: m.media_type ?? "file", name: m.media_name ?? "fichier" }); }
+  }
+
+  const canAll = !!delIds && delIds.every((mid) => { const x = msgs.find((y) => y.id === mid); return !!x && x.sender_id === me && !x.deleted_at; });
+
+  async function openForward(ids: string[]) {
+    setMenu(null);
+    setFwd(ids);
+    setPickT([]);
+    const { data: cs } = await supabase.from("conversations").select("id, is_group, name, user_a, user_b");
+    const rows = (cs ?? []) as { id: string; is_group: boolean | null; name: string | null; user_a: string | null; user_b: string | null }[];
+    const others = rows.filter((c) => !c.is_group).map((c) => (c.user_a === me ? c.user_b : c.user_a)).filter(Boolean) as string[];
+    const { data: dir } = await supabase.from("worker_directory").select("id, full_name").in("id", others);
+    const nm: Record<string, string> = {};
+    ((dir ?? []) as Person[]).forEach((p) => { nm[p.id] = p.full_name ?? "Contact"; });
+    setTargets(rows.map((c) => (c.is_group ? { id: c.id, title: c.name ?? "Groupe", group: true } : { id: c.id, title: nm[(c.user_a === me ? c.user_b : c.user_a) ?? ""] ?? "Contact", group: false })));
+  }
+
+  async function forwardTo(cids: string[]) {
+    const ids = fwd ?? [];
+    setFwd(null);
+    stopSelect();
+    if (!me) return;
+    setBusy(true);
+    setError("");
+    for (const cid of cids) for (const m of msgs.filter((x) => ids.includes(x.id) && !x.deleted_at)) {
+      const row: Record<string, unknown> = { conversation_id: cid, sender_id: me, body: m.body };
+      const tag = Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+      if (m.audio_path) {
+        const to = cid + "/" + tag + "." + m.audio_path.split(".").pop();
+        const { error: e1 } = await supabase.storage.from("voice").copy(m.audio_path, to);
+        if (e1) { setError("Transfert impossible : " + e1.message); break; }
+        row.audio_path = to;
+        row.audio_seconds = m.audio_seconds;
+      }
+      if (m.media_path) {
+        const to = cid + "/" + tag + "-" + (m.media_name ?? "fichier").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const { error: e2 } = await supabase.storage.from("chatfiles").copy(m.media_path, to);
+        if (e2) { setError("Transfert impossible : " + e2.message); break; }
+        row.media_path = to;
+        row.media_type = m.media_type;
+        row.media_name = m.media_name;
+      }
+      const { error: e3 } = await supabase.from("messages").insert(row);
+      if (e3) { setError("Transfert impossible : " + e3.message); break; }
+    }
+    setBusy(false);
+  }
+
   const fmt = (n: number) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
   const time = (d: string) => new Date(d).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   const reactLine = (mid: string) => {
@@ -320,12 +427,21 @@ export default function ChatPage() {
   };
   const preview = (m: Msg | undefined) => (!m ? "Message" : m.deleted_at ? "🚫 Message supprimé" : m.body ?? (m.media_path ? (m.media_type === "image" ? "📷 Photo" : m.media_type === "video" ? "🎥 Vidéo" : "📎 " + (m.media_name ?? "Document")) : "🎤 Message vocal"));
 
-  const visible = msgs.filter((m) => (!cleared || m.created_at > cleared) && (!query.trim() || (m.body ?? m.media_name ?? "").toLowerCase().includes(query.trim().toLowerCase())));
+  const visible = msgs.filter((m) => !hidden.includes(m.id) && (!cleared || m.created_at > cleared) && (!query.trim() || (m.body ?? m.media_name ?? "").toLowerCase().includes(query.trim().toLowerCase())));
   if (!me) return <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6 text-ink-600">{error || "Chargement…"}</main>;
 
   return (
     <main className="mx-auto flex h-[100dvh] max-w-md flex-col bg-beige-50">
-      <header className="flex items-center gap-3 border-b border-ink-400/20 bg-white px-4 py-3">
+      {selMode && (
+        <header className="flex items-center gap-3 border-b border-ink-400/20 bg-white px-4 py-3">
+          <button onClick={stopSelect} className="text-ink-600">✕</button>
+          <p className="flex-1 font-medium text-ink-900">{sel.length} sélectionné{sel.length > 1 ? "s" : ""}</p>
+          <button onClick={() => copyMsgs(sel)} aria-label="Copier" className="px-2 text-xl">📋</button>
+          <button onClick={() => openForward(sel)} aria-label="Transférer" className="px-2 text-xl">↪️</button>
+          <button onClick={() => setDelIds(sel)} aria-label="Supprimer" className="px-2 text-xl">🗑️</button>
+        </header>
+      )}
+      <header style={{ display: selMode ? "none" : undefined }} className="flex items-center gap-3 border-b border-ink-400/20 bg-white px-4 py-3">
         <Link href="/messages" className="text-ink-600">←</Link>
         {other?.avatar_url ? <img src={other.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" /> : <div className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-100 font-semibold text-wine-700">{(other?.full_name ?? "?").charAt(0).toUpperCase()}</div>}
         <div className="min-w-0 flex-1">
@@ -346,13 +462,15 @@ export default function ChatPage() {
           const rl = reactLine(m.id);
           const q = m.reply_to ? msgs.find((x) => x.id === m.reply_to) : undefined;
           return (
-            <div key={m.id}>
+            <div key={m.id} onClick={() => { if (selMode) toggleSel(m.id); }} className={"flex items-center rounded " + (sel.includes(m.id) ? "bg-wine-100" : "")}>
+              {selMode && <span className={"mr-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] " + (sel.includes(m.id) ? "border-wine-700 bg-wine-700 text-white" : "border-ink-400/40")}>{sel.includes(m.id) ? "✓" : ""}</span>}
+              <div className="min-w-0 flex-1">
               <div className={mine ? "flex justify-end" : "flex justify-start"}>
                 <div
                   onTouchStart={() => pressStart(m)}
                   onTouchEnd={pressEnd}
                   onTouchMove={pressEnd}
-                  onContextMenu={(e) => { e.preventDefault(); if (!m.deleted_at) setMenu(m); }}
+                  onContextMenu={(e) => { e.preventDefault(); if (!m.deleted_at && !selMode) setMenu(m); }}
                   className={"max-w-[80%] select-none rounded-md px-3 py-2 text-sm " + (mine ? "bg-wine-700 text-white" : "bg-white text-ink-900 shadow-sm")}
                 >
                   {m.reply_to && !m.deleted_at && (
@@ -370,9 +488,9 @@ export default function ChatPage() {
                       {m.media_path && (
                         urls[m.media_path] ? (
                           m.media_type === "image" ? (
-                            <img src={urls[m.media_path]} alt="" onClick={() => setZoom(urls[m.media_path as string])} className="max-h-64 rounded" />
+                            <img src={urls[m.media_path]} alt="" draggable={false} onClick={() => { if (!selMode) openMedia(m); }} className="max-h-64 rounded" />
                           ) : m.media_type === "video" ? (
-                            <video controls src={urls[m.media_path]} className="max-h-64 rounded" />
+                            <div className="relative" onClick={() => { if (!selMode) openMedia(m); }}><video src={urls[m.media_path]} preload="metadata" className="pointer-events-none max-h-64 rounded" /><span className="absolute inset-0 flex items-center justify-center text-4xl text-white">▶</span></div>
                           ) : (
                             <a href={urls[m.media_path]} target="_blank" rel="noreferrer" className="flex items-center gap-2 underline">📎 {m.media_name ?? "Document"}</a>
                           )
@@ -390,6 +508,7 @@ export default function ChatPage() {
                   <span className="-mt-1 rounded-full bg-white px-2 py-0.5 text-xs shadow-sm">{rl}</span>
                 </div>
               )}
+              </div>
             </div>
           );
         })}
@@ -408,9 +527,10 @@ export default function ChatPage() {
             {menu.sender_id === me && menu.body && Date.now() - new Date(menu.created_at).getTime() < EDIT_MS && (
               <button onClick={() => startEdit(menu)} className="block w-full px-4 py-3 text-left text-ink-900">✏️ Modifier</button>
             )}
-            {menu.sender_id === me && (
-              <button onClick={() => deleteMsg(menu)} className="block w-full px-4 py-3 text-left text-wine-700">🗑️ Supprimer pour tout le monde</button>
-            )}
+            {menu.body && <button onClick={() => copyMsgs([menu.id])} className="block w-full px-4 py-3 text-left text-ink-900">📋 Copier</button>}
+            <button onClick={() => openForward([menu.id])} className="block w-full px-4 py-3 text-left text-ink-900">↪️ Transférer</button>
+            <button onClick={() => startSelect(menu)} className="block w-full px-4 py-3 text-left text-ink-900">☑️ Sélectionner</button>
+            <button onClick={() => { setDelIds([menu.id]); setMenu(null); }} className="block w-full px-4 py-3 text-left text-wine-700">🗑️ Supprimer</button>
             <button onClick={() => setMenu(null)} className="block w-full px-4 py-3 text-left text-ink-600">Annuler</button>
           </div>
         </div>
@@ -467,9 +587,38 @@ export default function ChatPage() {
           </div>
         </div>
       )}
-      {zoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={() => setZoom(null)}>
-          <img src={zoom} alt="" className="max-h-full max-w-full" />
+      {fwd && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setFwd(null)}>
+          <div className="mx-auto max-h-[70dvh] w-full max-w-md overflow-y-auto rounded-t-xl bg-white p-3" onClick={(e) => e.stopPropagation()}>
+            <p className="px-4 pb-1 pt-2 text-sm text-ink-600">Transférer à…</p>
+            {targets.length === 0 && <p className="px-4 py-3 text-ink-600">Chargement…</p>}
+            {targets.map((t) => (
+              <button key={t.id} onClick={() => setPickT(pickT.includes(t.id) ? pickT.filter((x) => x !== t.id) : [...pickT, t.id])} className="block w-full px-4 py-3 text-left text-ink-900">{pickT.includes(t.id) ? "✅ " : "⬜ "}{t.group ? "👥 " : "👤 "}{t.title}</button>
+            ))}
+            {pickT.length > 0 && <button onClick={() => forwardTo(pickT)} className="block w-full rounded-full bg-wine-700 px-4 py-3 text-center text-white">Envoyer à {pickT.length} conversation{pickT.length > 1 ? "s" : ""}</button>}
+            <button onClick={() => setFwd(null)} className="block w-full px-4 py-3 text-left text-ink-600">Annuler</button>
+          </div>
+        </div>
+      )}
+      {delIds && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setDelIds(null)}>
+          <div className="mx-auto w-full max-w-md rounded-t-xl bg-white p-3" onClick={(e) => e.stopPropagation()}>
+            <p className="mb-1 px-4 pt-2 text-sm text-ink-600">Supprimer {delIds.length > 1 ? delIds.length + " messages" : "ce message"} ?</p>
+            <button onClick={() => hideForMe(delIds)} className="block w-full px-4 py-3 text-left text-ink-900">Supprimer pour moi</button>
+            {canAll && <button onClick={() => deleteAll(delIds)} className="block w-full px-4 py-3 text-left text-wine-700">Supprimer pour tout le monde</button>}
+            <button onClick={() => setDelIds(null)} className="block w-full px-4 py-3 text-left text-ink-600">Annuler</button>
+          </div>
+        </div>
+      )}
+      {viewer && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black">
+          <div className="flex items-center justify-between px-4 py-3 text-white">
+            <button onClick={() => history.back()} className="text-2xl">✕</button>
+            <a href={viewer.url} download={viewer.name} target="_blank" rel="noreferrer" className="text-2xl">⬇️</a>
+          </div>
+          <div className="flex flex-1 items-center justify-center overflow-hidden">
+            {viewer.kind === "video" ? <video src={viewer.url} controls autoPlay playsInline className="max-h-full max-w-full" /> : <img src={viewer.url} alt="" className="max-h-full max-w-full object-contain" />}
+          </div>
         </div>
       )}
       {sheet && (
@@ -489,7 +638,7 @@ export default function ChatPage() {
           {iBlocked && <button onClick={doUnblock} className="font-medium text-wine-700">Débloquer</button>}
         </div>
       )}
-      <footer style={{ display: iBlocked || blockedMe ? "none" : undefined }} className="flex items-center gap-2 border-t border-ink-400/20 bg-white px-3 py-3">
+      <footer style={{ display: selMode || iBlocked || blockedMe ? "none" : undefined }} className="flex items-center gap-2 border-t border-ink-400/20 bg-white px-3 py-3">
         {recording ? (
           <>
             <button onClick={() => stopRec(true)} className="px-2 text-ink-600">✕</button>
