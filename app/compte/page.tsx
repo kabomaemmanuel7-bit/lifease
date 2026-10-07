@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, MapPin, Phone, Mail, Image as ImageIcon, Wrench } from "lucide-react";
+import { ChevronLeft, MapPin, Phone, Mail, Image as ImageIcon, Wrench, Flag } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { supabase } from "@/lib/supabase";
 
@@ -167,6 +167,18 @@ export default function ComptePage() {
                     <p className="text-xs text-ink-600">
                       Ajouter, modifier ou supprimer les images du carrousel
                     </p>
+                  </div>
+                </Card>
+              </Link>
+
+              <Link href="/admin/signalements">
+                <Card className="flex items-center gap-3 bg-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-wine-50">
+                    <Flag className="h-5 w-5 text-wine-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink-900">Signalements</p>
+                    <p className="text-xs text-ink-600">Lire et traiter les signalements reçus</p>
                   </div>
                 </Card>
               </Link>
