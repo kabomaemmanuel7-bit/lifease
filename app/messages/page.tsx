@@ -6,10 +6,10 @@ import { supabase } from "@/lib/supabase";
 import PushToggle from "@/components/PushToggle";
 
 type Person = { id: string; full_name: string | null; avatar_url: string | null };
-type Conv = { id: string; user_a: string | null; user_b: string | null; is_group: boolean | null; name: string | null; last_message_at: string };
+type Conv = { id: string; user_a: string | null; user_b: string | null; is_group: boolean | null; name: string | null; avatar_url: string | null; last_message_at: string };
 type Msg = { conversation_id: string; sender_id: string; body: string | null; audio_path: string | null; read_at: string | null; created_at: string; deleted_at: string | null; media_path: string | null };
 type St = { conversation_id: string; archived: boolean; cleared_at: string | null };
-type Row = { id: string; other: string; group: boolean; title: string; last: string; at: string; unread: number; archived: boolean };
+type Row = { id: string; other: string; group: boolean; title: string; pic: string | null; last: string; at: string; unread: number; archived: boolean };
 
 export default function MessagesPage() {
   const [me, setMe] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export default function MessagesPage() {
       list.forEach((p) => { map[p.id] = p; });
       setPeople(map);
       setWorkers(list.filter((p) => p.id !== uid));
-      const { data: convs } = await supabase.from("conversations").select("id, user_a, user_b, is_group, name, last_message_at").order("last_message_at", { ascending: false });
+      const { data: convs } = await supabase.from("conversations").select("id, user_a, user_b, is_group, name, avatar_url, last_message_at").order("last_message_at", { ascending: false });
       const cl = (convs ?? []) as Conv[];
       const { data: sts } = await supabase.from("conversation_user_state").select("conversation_id, archived, cleared_at");
       const stMap: Record<string, St> = {};
@@ -60,6 +60,7 @@ export default function MessagesPage() {
           other: c.user_a === uid ? c.user_b ?? "" : c.user_a ?? "",
           group: g,
           title: c.name ?? "Groupe",
+          pic: c.avatar_url ?? null,
           last: last ? (last.deleted_at ? "🚫 Message supprimé" : last.body ?? (last.media_path ? "📎 Fichier" : "🎤 Message vocal")) : "Nouvelle conversation",
           at: c.last_message_at,
           unread: mine.filter((m) => m.sender_id !== uid && !m.deleted_at && (g ? !c0 || new Date(m.created_at) > c0 : !m.read_at)).length,
@@ -100,7 +101,7 @@ export default function MessagesPage() {
         {shown.length === 0 && <p className="text-sm text-ink-400">{tab === "archives" ? "Aucune conversation archivée." : "Aucune conversation pour l’instant."}</p>}
         {shown.map((r) => (
           <Link key={r.id} href={r.group ? `/messages/groupe/${r.id}` : `/messages/${r.id}`} className="flex items-center gap-3 rounded-md bg-white p-3 shadow-sm">
-            {r.group ? <div className="flex h-11 w-11 items-center justify-center rounded-full bg-wine-700 text-white">👥</div> : avatar(r.other)}
+            {r.group ? (r.pic ? <img src={r.pic} alt="" className="h-11 w-11 rounded-full object-cover" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full bg-wine-700 text-white">👥</div>) : avatar(r.other)}
             <div className="min-w-0 flex-1">
               <div className="flex justify-between gap-2"><span className="truncate font-medium text-ink-900">{r.group ? r.title : name(r.other)}</span><span className="text-xs text-ink-400">{when(r.at)}</span></div>
               <p className="truncate text-sm text-ink-600">{r.last}</p>

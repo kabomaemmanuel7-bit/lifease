@@ -21,13 +21,16 @@ export default function GroupInfoPage() {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [upBusy, setUpBusy] = useState(false);
 
   const load = useCallback(async () => {
     const { data: s } = await supabase.auth.getSession();
     setMe(s.session?.user.id ?? null);
-    const { data: g } = await supabase.from("conversations").select("name").eq("id", id).maybeSingle();
+    const { data: g } = await supabase.from("conversations").select("name, avatar_url").eq("id", id).maybeSingle();
     if (!g) { setError("Groupe introuvable."); return; }
     setName(g.name ?? "");
+    setAvatar(g.avatar_url ?? null);
     const { data: mem } = await supabase.from("conversation_members").select("user_id, role").eq("conversation_id", id);
     const ms = (mem ?? []) as Member[];
     setMembers(ms);
@@ -63,6 +66,32 @@ export default function GroupInfoPage() {
     if (await call("add_group_members", { p_conv: id, p_members: picked }, "Membres ajoutés.")) { setPicked([]); setAdding(false); setQ(""); }
   }
 
+  async function changePhoto(e: { target: HTMLInputElement }) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setUpBusy(true);
+    setError("");
+    try {
+      const bmp = await createImageBitmap(f);
+      const side = Math.min(bmp.width, bmp.height);
+      const cv = document.createElement("canvas");
+      cv.width = 400;
+      cv.height = 400;
+      cv.getContext("2d")?.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, 400, 400);
+      const blob = await new Promise<Blob | null>((r) => cv.toBlob(r, "image/jpeg", 0.85));
+      if (!blob) throw new Error("Image illisible");
+      const path = id + "/" + Date.now() + ".jpg";
+      const { error: up } = await supabase.storage.from("groupavatars").upload(path, blob, { contentType: "image/jpeg" });
+      if (up) throw new Error(up.message);
+      const url = supabase.storage.from("groupavatars").getPublicUrl(path).data.publicUrl;
+      await call("set_group_avatar", { p_conv: id, p_url: url }, "Photo modifiée.");
+    } catch (err) {
+      setError("Photo impossible : " + (err instanceof Error ? err.message : "erreur"));
+    }
+    setUpBusy(false);
+  }
+
   async function leave() {
     if (!confirm("Quitter ce groupe ?")) return;
     const { error: err } = await supabase.rpc("leave_group", { p_conv: id });
@@ -82,6 +111,10 @@ export default function GroupInfoPage() {
       <div className="space-y-4 px-4 py-4">
         {error && <p className="text-sm text-red-600">{error}</p>}
         {ok && <p className="text-sm text-green-700">{ok}</p>}
+        <div className="flex flex-col items-center gap-2">
+          {avatar ? <img src={avatar} alt="" className="h-24 w-24 rounded-full object-cover" /> : <div className="flex h-24 w-24 items-center justify-center rounded-full bg-wine-700 text-4xl text-white">👥</div>}
+          {isAdmin && <label className="text-sm font-medium text-wine-700">{upBusy ? "Envoi…" : "Changer la photo"}<input type="file" accept="image/*" onChange={changePhoto} className="hidden" /></label>}
+        </div>
         <div>
           <p className="mb-1 text-xs text-ink-400">Nom du groupe</p>
           {isAdmin ? (

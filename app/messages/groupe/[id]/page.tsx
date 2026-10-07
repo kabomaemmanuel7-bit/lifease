@@ -16,6 +16,7 @@ export default function GroupChatPage() {
   const { id } = useParams<{ id: string }>();
   const [me, setMe] = useState<string | null>(null);
   const [name, setName] = useState("Groupe");
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [count, setCount] = useState(0);
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [reads, setReads] = useState<Record<string, string>>({});
@@ -70,9 +71,10 @@ export default function GroupChatPage() {
       const uid = s.session?.user.id ?? null;
       setMe(uid);
       if (!uid) return;
-      const { data: g } = await supabase.from("conversations").select("name").eq("id", id).maybeSingle();
+      const { data: g } = await supabase.from("conversations").select("name, avatar_url").eq("id", id).maybeSingle();
       if (!g) { setError("Groupe introuvable."); return; }
       setName(g.name ?? "Groupe");
+      setAvatar(g.avatar_url ?? null);
       const { data: mem } = await supabase.from("conversation_members").select("user_id").eq("conversation_id", id);
       const ids = (mem ?? []).map((x) => x.user_id as string);
       setCount(ids.length);
@@ -359,7 +361,7 @@ export default function GroupChatPage() {
       ) : (
         <header className="flex items-center gap-3 border-b border-ink-400/20 bg-white px-4 py-3">
           <Link href="/messages" className="text-ink-600">←</Link>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-700 text-white">👥</div>
+          {avatar ? <img src={avatar} alt="" className="h-9 w-9 rounded-full object-cover" /> : <div className="flex h-9 w-9 items-center justify-center rounded-full bg-wine-700 text-white">👥</div>}
           <Link href={"/messages/groupe/" + id + "/infos"} className="min-w-0 flex-1">
             <p className="truncate font-medium leading-tight text-ink-900">{name}</p>
             <p className="text-xs text-ink-400">{count} membres</p>
