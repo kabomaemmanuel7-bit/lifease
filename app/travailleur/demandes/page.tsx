@@ -77,7 +77,7 @@ export default function DemandesTravailleurPage() {
       .order('created_at', { ascending: false });
 
     if (fetchError) {
-      setError("Impossible de charger les demandes pour le moment.");
+      setError("Impossible de charger les demandes : " + fetchError.message);
     } else {
       setDemandes((data as unknown as DemandeRow[]) ?? []);
     }
