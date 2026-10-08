@@ -71,7 +71,7 @@ export default function DemandesTravailleurPage() {
       .select(
         `id, description, urgency, status, created_at,
          client:profiles!requests_client_id_fkey ( full_name, phone, city ),
-         category:categories ( name, icon )`
+         category:services ( name )`
       )
       .eq('worker_id', user.id)
       .order('created_at', { ascending: false });
