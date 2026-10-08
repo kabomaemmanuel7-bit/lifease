@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import QuotePanel from '@/components/QuotePanel';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -222,6 +223,7 @@ export default function DemandesTravailleurPage() {
                     </p>
                   )}
                 </div>
+{(d.status === 'en_attente' || d.status === 'acceptee') && <QuotePanel requestId={d.id} role='worker' />}
               </Card>
             ))}
           </div>
