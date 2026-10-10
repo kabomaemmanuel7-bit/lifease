@@ -70,7 +70,7 @@ export default function MesDemandesPage() {
               </div>
               <p className="mt-3 text-sm text-ink-600">{r.description}</p>
               <RequestDetails d={r} />
-              {r.worker_id && <MessageLink userId={r.worker_id} label={`Écrire à ${names[r.worker_id] ?? "le prestataire"}`} />}
+              {r.worker_id && (r.status === "acceptee" || r.status === "terminee") && <MessageLink userId={r.worker_id} label={`Écrire à ${names[r.worker_id] ?? "le prestataire"}`} />}
               {(r.status === "en_attente" || r.status === "acceptee") && <QuotePanel requestId={r.id} role="client" />}
             </Card>
           ))}
