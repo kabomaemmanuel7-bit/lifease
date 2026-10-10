@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
 import { AvatarUploader } from "@/components/AvatarUploader";
-import { MessageButton } from "@/components/MessageButton";
 import { getEffectiveStatus } from "@/lib/availability";
 
 type WorkerData = {
@@ -341,7 +340,6 @@ export function WorkerProfileView({
           <Link href={`/demande/${workerId}`}>
             <Button className="w-full">Demander une intervention</Button>
           </Link>
-          <MessageButton workerId={workerId} />
         </div>
       )}
 
