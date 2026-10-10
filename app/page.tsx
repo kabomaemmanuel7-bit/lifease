@@ -32,6 +32,7 @@ type RecommendedWorker = {
   availability_end: string | null;
   rating: number;
   rating_count: number;
+avatar_url: string | null;
   full_name: string;
 };
 
@@ -139,9 +140,9 @@ export default function HomePage() {
 
       const { data: workers } = await supabase
         .from("worker_profiles")
-        .select("id, metier, zone, status, availability_start, availability_end, rating, rating_count")
+        .select("id, metier, zone, status, availability_start, availability_end, rating, rating_count, avatar_url")
         .order("rating", { ascending: false })
-        .limit(5);
+        .limit(6);
 
       if (workers && workers.length > 0) {
         const ids = workers.map((w) => w.id);
@@ -285,38 +286,40 @@ export default function HomePage() {
             Voir tout
           </Link>
         </div>
-        <div className="mb-6 flex flex-col gap-3">
+        <div className="mb-6 grid grid-cols-2 gap-3">
           {recommended.length === 0 && (
-            <Card className="bg-white text-center text-sm text-ink-600">
+            <Card className="col-span-2 bg-white text-center text-sm text-ink-600">
               Aucun professionnel disponible pour le moment.
             </Card>
           )}
           {recommended.map((worker) => (
-            <Link key={worker.id} href={`/professionnel/${worker.id}`}>
-              <Card className="flex items-center gap-3 bg-white">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-wine-600 text-sm font-medium text-white">
-                  {worker.full_name.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink-900">
-                    {worker.full_name}
-                  </p>
-                  <p className="truncate text-xs text-ink-600">
-                    {worker.metier}
-                    {worker.zone ? ` · ${worker.zone}` : ""}
-                  </p>
-                  {worker.rating_count > 0 && (
-                    <p className="mt-0.5 flex items-center gap-1 text-xs text-ink-600">
-                      <Star className="h-3 w-3 fill-wine-600 text-wine-600" />
-                      {worker.rating.toFixed(1)} ({worker.rating_count})
-                    </p>
-                  )}
-                </div>
-                <Badge tone={statusTone[getEffectiveStatus(worker.status, worker.availability_start, worker.availability_end)]}>
-                  {statusLabel[getEffectiveStatus(worker.status, worker.availability_start, worker.availability_end)]}
-                </Badge>
-              </Card>
-            </Link>
+<Link key={worker.id} href={`/professionnel/${worker.id}`}>
+<div className="overflow-hidden rounded-xl border border-beige-200 bg-white">
+<div className="aspect-[4/5] w-full bg-wine-600">
+{worker.avatar_url ? (
+<img src={worker.avatar_url} alt={worker.full_name} className="h-full w-full object-cover" />
+) : (
+<div className="flex h-full items-center justify-center text-4xl font-medium text-white">
+{worker.full_name.charAt(0).toUpperCase()}
+</div>
+)}
+</div>
+<div className="space-y-1 p-2.5">
+<p className="truncate text-xs font-medium text-ink-900">
+{worker.full_name} · {worker.metier}
+</p>
+{worker.rating_count > 0 && (
+<p className="flex items-center gap-1 text-xs text-ink-600">
+<Star className="h-3 w-3 fill-wine-600 text-wine-600" />
+{worker.rating.toFixed(1)} ({worker.rating_count} avis)
+</p>
+)}
+<Badge tone={statusTone[getEffectiveStatus(worker.status, worker.availability_start, worker.availability_end)]}>
+{statusLabel[getEffectiveStatus(worker.status, worker.availability_start, worker.availability_end)]}
+</Badge>
+</div>
+</div>
+</Link>
           ))}
         </div>
 
