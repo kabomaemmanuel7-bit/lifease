@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import QuotePanel from '@/components/QuotePanel';
+import MessageLink from '@/components/MessageLink';
 import RequestDetails from '@/components/RequestDetails';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -19,6 +20,7 @@ interface DemandeRow {
   created_at: string;
   client: { full_name: string; phone: string | null; city: string | null } | null;
   category: { name: string; icon: string | null } | null;
+client_id: string;
 contact_name: string | null; address: string | null; google_maps_link: string | null; video_url: string | null;
 }
 
@@ -71,7 +73,7 @@ export default function DemandesTravailleurPage() {
     const { data, error: fetchError } = await supabase
       .from('requests')
       .select(
-        `id, description, urgency, status, created_at, contact_name, address, google_maps_link, video_url,
+        `id, description, urgency, status, created_at, client_id, contact_name, address, google_maps_link, video_url,
          client:profiles!requests_client_id_fkey ( full_name, phone, city ),
          category:services ( name )`
       )
@@ -184,6 +186,7 @@ export default function DemandesTravailleurPage() {
 
                 <p className="mt-3 text-sm text-ink-600">{d.description}</p>
 <RequestDetails d={d} />
+<MessageLink userId={d.client_id} label="Écrire au client" />
 
                 {d.client?.phone && (
                   <p className="mt-2 text-xs text-ink-400">📞 {d.client.phone}</p>
