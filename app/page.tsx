@@ -268,7 +268,7 @@ export default function HomePage() {
           onChange={(e) => {
             if (e.target.value) router.push(`/recherche?service=${e.target.value}`);
           }}
-          className="mb-6 w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
+          className="mb-3 w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
         >
           <option value="">Choisissez un service…</option>
           {services.map((s) => (
@@ -277,6 +277,14 @@ export default function HomePage() {
             </option>
           ))}
         </select>
+<div className="mb-6 flex flex-col gap-2">
+<Link href="/services" className="block rounded-md border border-wine-200 bg-white px-4 py-3 text-center text-sm font-medium text-wine-700">
+Catégorie des travailleurs
+</Link>
+<Link href="/structures" className="block rounded-md border border-wine-200 bg-white px-4 py-3 text-center text-sm font-medium text-wine-700">
+Catégories des structures privées et publiques
+</Link>
+</div>
 
         <div className="mb-3 flex items-center justify-between">
           <p className="text-base font-medium text-ink-900">
