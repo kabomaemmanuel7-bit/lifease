@@ -17,6 +17,15 @@ export default function MessagesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [workers, setWorkers] = useState<Person[]>([]);
   const [q, setQ] = useState("");
+  const [role, setRole] = useState<string | null>(null);
+  const full = role === "travailleur" || role === "admin";
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      setRole(data?.role ?? null);
+    });
+  }, []);
   const [tab, setTab] = useState<"actives" | "archives">("actives");
   const [loading, setLoading] = useState(true);
 
@@ -90,12 +99,12 @@ export default function MessagesPage() {
     <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-ink-900">Messages</h1>
-        <Link href="/groupes/nouveau" className="text-sm font-medium text-wine-700">👥 Nouveau groupe</Link>
+        {full && <Link href="/groupes/nouveau" className="text-sm font-medium text-wine-700">👥 Nouveau groupe</Link>}
       </div>
       <div className="mt-3"><PushToggle /></div>
       <div className="mt-4 flex gap-4 border-b border-beige-200 text-sm">
         <button onClick={() => setTab("actives")} className={"pb-2 " + (tab === "actives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Conversations</button>
-        <button onClick={() => setTab("archives")} className={"pb-2 " + (tab === "archives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Archivées{nArch > 0 ? " (" + nArch + ")" : ""}</button>
+        {full && <button onClick={() => setTab("archives")} className={"pb-2 " + (tab === "archives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Archivées{nArch > 0 ? " (" + nArch + ")" : ""}</button>}
       </div>
       <div className="mt-4 space-y-2">
         {shown.length === 0 && <p className="text-sm text-ink-400">{tab === "archives" ? "Aucune conversation archivée." : "Aucune conversation pour l’instant."}</p>}
@@ -110,6 +119,7 @@ export default function MessagesPage() {
           </Link>
         ))}
       </div>
+{full && (<>
       <h2 className="mt-8 text-sm font-semibold text-ink-900">Écrire à un travailleur</h2>
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un nom" className="mt-2 w-full rounded-md border border-ink-400/30 bg-white px-3 py-2 text-sm" />
       <div className="mt-3 space-y-2">
@@ -120,6 +130,7 @@ export default function MessagesPage() {
           </Link>
         ))}
       </div>
+</>)}
     </main>
   );
 }
