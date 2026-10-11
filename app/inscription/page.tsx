@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
@@ -21,9 +21,18 @@ export default function InscriptionPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [services, setServices] = useState<{ id: string; name: string }[]>([]);
+  const [serviceId, setServiceId] = useState("");
+  useEffect(() => {
+    supabase.from("services").select("id, name").order("name").then(({ data }) => setServices(data ?? []));
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (role === "travailleur" && !serviceId) {
+      setError("Choisissez votre catégorie.");
+      return;
+    }
     setError(null);
 
     if (password !== confirmPassword) {
@@ -44,6 +53,7 @@ export default function InscriptionPage() {
         data: {
           role,
           full_name: fullName,
+service_id: role === "travailleur" ? serviceId : "",
         },
       },
     });
@@ -131,6 +141,17 @@ export default function InscriptionPage() {
           required
         />
 
+{role === "travailleur" && (
+<div className="mb-4">
+<label htmlFor="service" className="mb-1 block text-sm font-medium text-ink-900">Votre catégorie</label>
+<select id="service" value={serviceId} onChange={(e) => setServiceId(e.target.value)} className="w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 focus:border-wine-400 focus:outline-none">
+<option value="">Choisissez votre catégorie…</option>
+{services.map((s) => (
+<option key={s.id} value={s.id}>{s.name}</option>
+))}
+</select>
+</div>
+)}
         {error && (
           <p className="mb-4 text-sm text-red-600" role="alert">
             {error}
