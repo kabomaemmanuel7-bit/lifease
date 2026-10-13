@@ -7,7 +7,6 @@ import { Star } from "lucide-react";
 import { NavMenu } from "@/components/NavMenu";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { InterventionCard } from "@/components/InterventionCard";
 import { supabase } from "@/lib/supabase";
 import { getEffectiveStatus } from "@/lib/availability";
 
@@ -331,31 +330,6 @@ Catégories des structures privées et publiques
           ))}
         </div>
 
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-base font-medium text-ink-900">
-            Dernières interventions
-          </p>
-        </div>
-        <div className="flex flex-col gap-3">
-          {feed.length === 0 && (
-            <Card className="bg-white text-center text-sm text-ink-600">
-              Aucune intervention publiée pour le moment.
-            </Card>
-          )}
-          {feed.map((item) => (
-            <InterventionCard
-              key={item.id}
-              id={item.id}
-              title={item.title}
-              description={item.description}
-              imageUrls={item.image_urls?.length ? item.image_urls : item.image_url ? [item.image_url] : []}
-              videoUrl={item.video_url}
-              location={item.location}
-              completedAt={item.completed_at}
-              workerName={item.worker_name}
-            />
-          ))}
-        </div>
       </div>
     </main>
   );
