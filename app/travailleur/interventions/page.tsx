@@ -164,10 +164,12 @@ export default function InterventionsPage() {
   }
 
   async function handleDelete(id: string) {
+if (!window.confirm("Supprimer cette intervention ? Cette action est définitive.")) return;
     const { error: delError } = await supabase
       .from("worker_portfolio")
       .delete()
       .eq("id", id);
+    if (delError) alert("Suppression impossible : " + delError.message);
     if (!delError) {
       setItems((prev) => prev.filter((i) => i.id !== id));
     }
