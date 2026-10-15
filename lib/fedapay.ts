@@ -28,3 +28,12 @@ export async function createCheckout(amount: number, requestId: string, name: st
   const t = await call("/transactions/" + tx.id + "/token", {});
   return { id: tx.id as number, url: t.url as string };
 }
+
+export async function getTransaction(id: string) {
+  const res = await fetch(BASE + "/transactions/" + id, {
+    headers: { Authorization: "Bearer " + process.env.FEDAPAY_SECRET_KEY },
+  });
+  if (!res.ok) throw new Error("FedaPay " + res.status);
+  const d = await res.json();
+  return d["v1/transaction"] || d.transaction || d;
+}
