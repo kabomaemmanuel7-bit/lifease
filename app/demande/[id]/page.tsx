@@ -29,7 +29,7 @@ export default function DemandePage() {
   const [serviceId, setServiceId] = useState("");
   const [contactName, setContactName] = useState("");
   const [address, setAddress] = useState("");
-  const [googleMapsLink, setGoogleMapsLink] = useState("");
+  const [phone, setPhone] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [description, setDescription] = useState("");
   const [urgency, setUrgency] = useState<Urgency>("normal");
@@ -71,8 +71,8 @@ export default function DemandePage() {
       setError("Merci d'indiquer votre adresse.");
       return;
     }
-    if (!googleMapsLink.trim()) {
-      setError("Le lien Google Maps est obligatoire.");
+    if (phone.replace(/\D/g, "").length < 8) {
+      setError("Merci d'indiquer un numéro de téléphone valide.");
       return;
     }
     if (description.trim().length < 5) {
@@ -119,7 +119,7 @@ export default function DemandePage() {
       service_id: serviceId,
       contact_name: contactName.trim(),
       address: address.trim(),
-      google_maps_link: googleMapsLink.trim(),
+      contact_phone: phone.trim(),
       video_url: videoUrl,
       description,
       urgency,
@@ -214,13 +214,13 @@ export default function DemandePage() {
           />
 
           <label className="mb-1.5 block text-sm font-medium text-ink-900">
-            Lien Google Maps <span className="text-wine-600">*</span>
+            Votre numéro de téléphone <span className="text-wine-600">*</span>
           </label>
           <input
-            type="url"
-            value={googleMapsLink}
-            onChange={(e) => setGoogleMapsLink(e.target.value)}
-            placeholder="https://maps.google.com/..."
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Ex : 01 XX XX XX XX"
             className="mb-4 w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-wine-400 focus:outline-none"
             required
           />
