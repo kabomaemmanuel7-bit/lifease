@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import QuotePanel from '@/components/QuotePanel';
 import PayButton from '@/components/PayButton';
 import MessageLink from '@/components/MessageLink';
 import RequestDetails from '@/components/RequestDetails';
@@ -214,15 +213,6 @@ export default function DemandesTravailleurPage() {
                     </>
                   )}
 
-                  {d.status === 'acceptee' && (
-                    <Button
-                      size="sm"
-                      disabled={pendingId === d.id}
-                      onClick={() => updateStatus(d.id, 'terminee')}
-                    >
-                      {pendingId === d.id ? 'Mise à jour…' : 'Marquer comme terminée'}
-                    </Button>
-                  )}
 
                   {d.status === 'terminee' && (
                     <p className="text-xs font-medium text-green-700">
@@ -231,7 +221,6 @@ export default function DemandesTravailleurPage() {
                   )}
                 </div>
 {d.status === 'acceptee' && <PayButton requestId={d.id} />}
-{(d.status === 'en_attente' || d.status === 'acceptee') && <QuotePanel requestId={d.id} role='worker' />}
               </Card>
             ))}
           </div>

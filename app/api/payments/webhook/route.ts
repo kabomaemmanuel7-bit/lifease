@@ -25,10 +25,22 @@ export async function POST(req: Request) {
   if (!id) return NextResponse.json({ ok: true });
   const tx = await getTransaction(id);
   const status = MAP[tx.status];
-  if (status) {
-    const upd: any = { status };
-    if (status === "paye") upd.paid_at = new Date().toISOString();
-    await admin.from("payments").update(upd).eq("fedapay_transaction_id", id);
+  const { data: p } = await admin.from("payments")
+    .select("id, request_id, amount").eq("fedapay_transaction_id", id).maybeSingle();
+  if (status && p) {
+    if (status === "paye") {
+      await admin.from("payments")
+        .update({ status, paid_at: new Date().toISOString() })
+        .eq("id", p.id).eq("status", "en_attente");
+      await admin.from("requests")
+        .update({ status: "terminee", payment_status: "paye", amount: p.amount })
+        .eq("id", p.request_id).eq("status", "acceptee");
+    } else if (status === "transfere" || status === "rembourse") {
+      await admin.from("payments").update({ status }).eq("id", p.id);
+    } else {
+      await admin.from("payments").update({ status })
+        .eq("id", p.id).eq("status", "en_attente");
+    }
   }
   return NextResponse.json({ ok: true });
 }

@@ -5,8 +5,9 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 
 export default function PayButton({ requestId }: { requestId: string }) {
+  const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
-  const [url, setUrl] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function go() {
@@ -19,26 +20,31 @@ export default function PayButton({ requestId }: { requestId: string }) {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + (session?.access_token ?? ''),
       },
-      body: JSON.stringify({ request_id: requestId }),
+      body: JSON.stringify({ request_id: requestId, amount: Number(amount) }),
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok) setErr(j.error || 'Échec');
-    else setUrl(j.url);
+    else setDone(true);
     setBusy(false);
   }
 
+  if (done) {
+    return <p className="mt-3 text-xs text-ink-600">Demande de paiement envoyée au client.</p>;
+  }
   return (
-    <div className="mt-3">
-      <Button size="sm" disabled={busy || !!url} onClick={go}>
-        {busy ? 'Envoi…' : 'Confirmer la fin du travail'}
+    <div className="mt-3 flex items-center gap-2">
+      <input
+        type="number"
+        inputMode="numeric"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder="Montant en FCFA"
+        className="w-40 rounded-md border border-wine-100 bg-white px-3 py-2 text-sm"
+      />
+      <Button size="sm" disabled={busy || !amount} onClick={go}>
+        {busy ? 'Envoi…' : 'Demander le paiement'}
       </Button>
-      {err && <p className="mt-2 text-xs text-wine-700">{err}</p>}
-      {url && (
-        <p className="mt-2 text-xs text-ink-600">
-          Demande de paiement créée. Lien de test :{' '}
-          <a href={url} className="underline">ouvrir</a>
-        </p>
-      )}
+      {err && <p className="text-xs text-wine-700">{err}</p>}
     </div>
   );
 }

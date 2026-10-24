@@ -5,7 +5,6 @@ import { ChevronLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import QuotePanel from "@/components/QuotePanel";
 import RequestDetails from "@/components/RequestDetails";
 import MessageLink from "@/components/MessageLink";
 
@@ -71,7 +70,6 @@ export default function MesDemandesPage() {
               <p className="mt-3 text-sm text-ink-600">{r.description}</p>
               <RequestDetails d={r} />
               {r.worker_id && (r.status === "acceptee" || r.status === "terminee") && <MessageLink userId={r.worker_id} label={`Écrire à ${names[r.worker_id] ?? "le prestataire"}`} />}
-              {(r.status === "en_attente" || r.status === "acceptee") && <QuotePanel requestId={r.id} role="client" />}
             </Card>
           ))}
         </div>
