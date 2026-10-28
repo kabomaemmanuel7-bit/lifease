@@ -276,14 +276,6 @@ export default function HomePage() {
             </option>
           ))}
         </select>
-<div className="mb-6 flex flex-col gap-2">
-<Link href="/services" className="block rounded-md border border-wine-200 bg-white px-4 py-3 text-center text-sm font-medium text-wine-700">
-Catégorie des travailleurs
-</Link>
-<Link href="/structures" className="block rounded-md border border-wine-200 bg-white px-4 py-3 text-center text-sm font-medium text-wine-700">
-Catégories des structures privées et publiques
-</Link>
-</div>
 
         <div className="mb-3 flex items-center justify-between">
           <p className="text-base font-medium text-ink-900">
