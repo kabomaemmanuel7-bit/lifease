@@ -1,5 +1,6 @@
 "use client";
 
+import PositionButton from "@/components/PositionButton";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -19,6 +20,8 @@ export default function TravailleurProfilPage() {
   const [metier, setMetier] = useState("");
   const [competences, setCompetences] = useState("");
   const [zone, setZone] = useState("");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [experienceYears, setExperienceYears] = useState("0");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<Status>("disponible");
@@ -70,6 +73,8 @@ export default function TravailleurProfilPage() {
         setMetier(existing.metier ?? "");
         setCompetences((existing.competences ?? []).join(", "));
         setZone(existing.zone ?? "");
+        setLat(existing.latitude ?? null);
+        setLng(existing.longitude ?? null);
         setExperienceYears(String(existing.experience_years ?? 0));
         setDescription(existing.description ?? "");
         setStatus(existing.status ?? "disponible");
@@ -107,6 +112,8 @@ export default function TravailleurProfilPage() {
         .map((c) => c.trim())
         .filter(Boolean),
       zone: zone.trim() || null,
+      latitude: lat,
+      longitude: lng,
       experience_years: parseInt(experienceYears, 10) || 0,
       description: description.trim() || null,
       status,
@@ -237,6 +244,7 @@ export default function TravailleurProfilPage() {
             onChange={(e) => setZone(e.target.value)}
             placeholder="Ex : Abomey-Calavi et environs"
           />
+          <PositionButton latitude={lat} longitude={lng} onChange={(a, b) => { setLat(a); setLng(b); }} />
           <Input
             label="Années d'expérience"
             type="number"
