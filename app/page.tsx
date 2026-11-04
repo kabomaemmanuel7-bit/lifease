@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Star, Search, ArrowRight, MapPin, Zap } from "lucide-react";
 import { NavMenu } from "@/components/NavMenu";
 import { Badge } from "@/components/ui/Badge";
-import CategoryIcon from "@/components/CategoryIcon";
+import CategoryGrid from "@/components/CategoryGrid";
 import { supabase } from "@/lib/supabase";
 import { getEffectiveStatus } from "@/lib/availability";
 
@@ -207,7 +207,6 @@ export default function HomePage() {
   const initiale = profile?.full_name?.charAt(0).toUpperCase() || "?";
   const currentSlide = slides[slide] ?? slides[0];
   const onPhoto = !!currentSlide?.image_url;
-  const shown = services.slice(0, 7);
   const nearby: (Worker & { distance: number })[] = pos
     ? workers
         .map((w) => ({ ...w, distance: km(pos.lat, pos.lng, w.latitude, w.longitude) }))
@@ -305,37 +304,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="px-5 pt-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-ink-900">Nos catégories</h2>
-            <Link href="/services" className="flex items-center gap-1 text-sm font-medium text-ink-900">
-              Tout voir <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-4 gap-2.5">
-            {shown.map((s) => (
-              <Link
-                key={s.id}
-                href={`/recherche?service=${s.slug}`}
-                className="flex flex-col items-center gap-1.5 rounded-2xl bg-white px-1 py-3 text-center shadow-sm"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-beige-200 text-xl text-ink-900">
-                  <CategoryIcon name={s.name} slug={s.slug} className="h-5 w-5" />
-                </span>
-                <span className="w-full truncate text-[11px] font-medium text-ink-900">{s.name}</span>
-              </Link>
-            ))}
-            <Link
-              href="/services"
-              className="flex flex-col items-center gap-1.5 rounded-2xl bg-white px-1 py-3 text-center shadow-sm"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-beige-200 text-xl text-ink-900">
-                …
-              </span>
-              <span className="text-[11px] font-medium text-ink-900">Autres</span>
-            </Link>
-          </div>
-        </section>
+        <CategoryGrid services={services} />
 
         <section className="px-5 pt-6">
           <div className="mb-3 flex items-center justify-between">
