@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Star, Search, ArrowRight, MapPin, Zap } from "lucide-react";
 import { NavMenu } from "@/components/NavMenu";
 import { Badge } from "@/components/ui/Badge";
+import CategoryIcon from "@/components/CategoryIcon";
 import { supabase } from "@/lib/supabase";
 import { getEffectiveStatus } from "@/lib/availability";
 
@@ -89,8 +90,6 @@ const fmt = (d: number) =>
 const norm = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-const isEmoji = (s: string | null) =>
-  !!s && s.length <= 4 && !/^[a-z-]+$/i.test(s);
 
 export default function HomePage() {
   const router = useRouter();
@@ -321,7 +320,7 @@ export default function HomePage() {
                 className="flex flex-col items-center gap-1.5 rounded-2xl bg-white px-1 py-3 text-center shadow-sm"
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-beige-200 text-xl text-ink-900">
-                  {isEmoji(s.icon) ? s.icon : s.name.charAt(0).toUpperCase()}
+                  <CategoryIcon name={s.name} slug={s.slug} className="h-5 w-5" />
                 </span>
                 <span className="w-full truncate text-[11px] font-medium text-ink-900">{s.name}</span>
               </Link>
