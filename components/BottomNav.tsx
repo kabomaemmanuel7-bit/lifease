@@ -2,12 +2,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ClipboardList, MessageCircle, User } from "lucide-react";
+import { Home, Search, ClipboardList, MessageCircle, User } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const SHOWN = ["/", "/recherche", "/services", "/mes-demandes", "/messages", "/compte"];
 const TABS = [
   { href: "/", label: "Accueil", Icon: Home },
+  { href: "/recherche", label: "Recherche", Icon: Search },
   { href: "/mes-demandes", label: "Demandes", Icon: ClipboardList },
   { href: "/messages", label: "Messages", Icon: MessageCircle },
   { href: "/compte", label: "Compte", Icon: User },
