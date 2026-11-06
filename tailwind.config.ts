@@ -10,32 +10,32 @@ const config: Config = {
       colors: {
         // Rouge — couleur de marque : actions principales, accents, icônes, liens
         wine: {
-          50: "#FBEEF0",
-          100: "#F3D9DC",
-          200: "#E8B9BE",
-          300: "#D68B93",
-          400: "#B85763",
-          500: "#8C2E3A",
-          600: "#6B1E2C",
-          700: "#571825",
-          800: "#43121C",
-          900: "#2E0C13",
+          50: "#EAF7EF",
+          100: "#D3EEDE",
+          200: "#A9DDBF",
+          300: "#5FBF86",
+          400: "#2FA062",
+          500: "#0F8541",
+          600: "#0F8541",
+          700: "#06552C",
+          800: "#06552C",
+          900: "#043D20",
         },
         // Beige — fonds de page, fonds secondaires, séparateurs
         beige: {
-          50: "#FBF8F2",
-          100: "#F5EEE0",
-          200: "#EAE0C8",
-          300: "#DBC9A0",
+          50: "#F1FAF4",
+          100: "#E1F3E8",
+          200: "#CFE8D9",
+          300: "#A9DDBF",
         },
         // Gris neutres — texte
         ink: {
-          900: "#2A2A2A",
-          600: "#5C5C5C",
-          400: "#8A8A8A",
+          900: "#0F2A1C",
+          600: "#4F655A",
+          400: "#7B8F84",
         },
         // Blanc — cartes et surfaces au premier plan (utiliser bg-white)
-        cream: "#FBF8F2",
+        cream: "#F1FAF4",
       },
       borderRadius: {
         sm: "8px",

@@ -217,17 +217,17 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-beige-50">
       <div className="mx-auto max-w-md pb-6">
-        <section className="rounded-b-[2rem] bg-[#141414] px-5 pb-6 pt-6 text-white">
+        <section className="rounded-b-[2rem] bg-gradient-to-br from-wine-600 to-wine-800 px-5 pb-6 pt-6 text-white">
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="rounded-lg bg-beige-50">
                 <NavMenu />
               </div>
-              <span className="text-2xl font-semibold tracking-tight text-beige-50">LifEase</span>
+              <span className="text-2xl font-extrabold tracking-tight text-white">Lif<span className="text-[#F7A82A]">Ease</span></span>
             </div>
             <Link
               href={profile?.role === "travailleur" ? "/travailleur/mon-profil" : "/compte"}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-beige-50 text-sm font-semibold text-[#141414]"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-beige-50 text-sm font-semibold text-wine-700"
               aria-label="Mon compte"
             >
               {initiale}
@@ -238,7 +238,7 @@ export default function HomePage() {
             {profile?.city ? `${profile.city}, Bénin` : "Bénin"}
           </p>
           <h1 className="mb-5 text-3xl font-semibold leading-tight">
-            Quel service vous faut-il <span className="text-beige-200">aujourd'hui ?</span>
+            Quel service vous faut-il <span className="text-[#F7A82A]">aujourd'hui ?</span>
           </h1>
           <form onSubmit={submit} className="flex items-center gap-2 rounded-full bg-white p-1.5 pl-4">
             <Search className="h-5 w-5 shrink-0 text-ink-400" />
@@ -254,7 +254,7 @@ export default function HomePage() {
             <button
               type="submit"
               aria-label="Rechercher"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#141414] text-white"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-wine-600 to-wine-800 text-white"
             >
               <ArrowRight className="h-5 w-5" />
             </button>
@@ -296,7 +296,7 @@ export default function HomePage() {
                   onClick={() => setSlide(i)}
                   aria-label={`Voir le message ${i + 1}`}
                   className={`h-1.5 rounded-full transition-all ${
-                    i === slide ? (onPhoto ? "w-6 bg-white" : "w-6 bg-[#141414]") : "w-1.5 bg-[#9ca3af]"
+                    i === slide ? (onPhoto ? "w-6 bg-white" : "w-6 bg-wine-600") : "w-1.5 bg-[#9ca3af]"
                   }`}
                 />
               ))}
@@ -320,7 +320,7 @@ export default function HomePage() {
               </p>
               <button
                 onClick={locate}
-                className="mt-3 rounded-full bg-[#141414] px-5 py-2.5 text-sm font-medium text-white"
+                className="mt-3 rounded-full bg-wine-600 px-5 py-2.5 text-sm font-medium text-white"
               >
                 Autour de moi
               </button>
@@ -336,7 +336,7 @@ export default function HomePage() {
                 const st = getEffectiveStatus(w.status, w.availability_start, w.availability_end);
                 return (
                   <div key={w.id} className="flex gap-3 rounded-2xl bg-white p-3 shadow-sm">
-                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-[#141414]">
+                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-wine-600">
                       {w.avatar_url ? (
                         <img src={w.avatar_url} alt={w.full_name} className="h-full w-full object-cover" />
                       ) : (
@@ -357,14 +357,14 @@ export default function HomePage() {
                         {w.rating_count > 0 && (
                           <>
                             <span>·</span>
-                            <Star className="h-3 w-3 fill-[#141414] text-[#141414]" />
+                            <Star className="h-3 w-3 fill-[#F7B32B] text-[#F7B32B]" />
                             {w.rating.toFixed(1)} ({w.rating_count})
                           </>
                         )}
                       </p>
                       <Link
                         href={`/professionnel/${w.id}`}
-                        className="mt-2 block rounded-full bg-[#141414] py-2 text-center text-xs font-medium text-white"
+                        className="mt-2 block rounded-full bg-wine-600 py-2 text-center text-xs font-medium text-white"
                       >
                         Voir le profil
                       </Link>
