@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowRight, LayoutGrid } from 'lucide-react';
 
 type Service = { id: string; slug: string; name: string };
 
@@ -21,12 +22,23 @@ export default function CategoryGrid({ services }: { services: Service[] }) {
     return s ? `/recherche?service=${s.slug}` : '/recherche';
   };
   return (
-    <div className="grid grid-cols-4 gap-2">
-      {TILES.map((t) => (
-        <Link key={t.file} href={hrefFor(t.stem)} className="block overflow-hidden rounded-[22px] shadow-md shadow-wine-800/10 transition-transform active:scale-95">
-          <img src={`/categories/${t.file}.webp`} alt={t.label} className="block w-full" />
+    <section className="px-5 pt-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-ink-900">
+          <LayoutGrid className="h-5 w-5 text-wine-600" />
+          Nos catégories
+        </h2>
+        <Link href="/recherche" className="flex items-center gap-1 text-sm font-semibold text-wine-700">
+          Voir tout <ArrowRight className="h-4 w-4" />
         </Link>
-      ))}
-    </div>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {TILES.map((t) => (
+          <Link key={t.file} href={hrefFor(t.stem)} className="block overflow-hidden rounded-[22px] shadow-md shadow-wine-800/10 transition-transform active:scale-95">
+            <img src={`/categories/${t.file}.webp`} alt={t.label} className="block w-full" />
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
