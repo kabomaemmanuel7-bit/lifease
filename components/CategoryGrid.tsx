@@ -3,7 +3,7 @@ import { ArrowRight, LayoutGrid } from 'lucide-react';
 
 type Service = { id: string; slug: string; name: string };
 
-const TILES = [
+export const TILES = [
   { file: 'electricite', label: 'Électricité', stem: 'elect' },
   { file: 'plomberie', label: 'Plomberie', stem: 'plomb' },
   { file: 'mecanique', label: 'Mécanique', stem: 'mecan' },
@@ -14,7 +14,7 @@ const TILES = [
   { file: 'nettoyage', label: 'Nettoyage', stem: 'netto' },
 ];
 
-const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+export const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 export default function CategoryGrid({ services }: { services: Service[] }) {
   const hrefFor = (stem: string) => {
@@ -28,7 +28,7 @@ export default function CategoryGrid({ services }: { services: Service[] }) {
           <LayoutGrid className="h-5 w-5 text-wine-600" />
           Nos catégories
         </h2>
-        <Link href="/recherche" className="flex items-center gap-1 text-sm font-semibold text-wine-700">
+        <Link href="/categories" className="flex items-center gap-1 text-sm font-semibold text-wine-700">
           Voir tout <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
