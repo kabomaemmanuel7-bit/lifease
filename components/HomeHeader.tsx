@@ -33,7 +33,7 @@ export default function HomeHeader(p: Props) {
     <section className="relative overflow-hidden rounded-b-[2rem] bg-gradient-to-br from-wine-600 to-wine-800 pb-6 text-white">
       <div className="absolute left-0 top-0 h-[96px] w-[66%] rounded-br-[3.5rem] bg-white" />
       <img
-        src="/hero.png"
+        src="/hero.webp"
         alt=""
         onError={(e) => { e.currentTarget.style.display = 'none'; }}
         className="absolute right-0 top-[60px] h-[210px] w-[50%] object-cover object-top"
