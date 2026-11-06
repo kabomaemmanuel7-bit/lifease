@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { TILES, norm } from "@/components/CategoryGrid";
+import { ALL_TILES } from "@/lib/catTiles";
 
 type Service = { id: string; slug: string; name: string; icon: string | null };
 
@@ -33,11 +34,12 @@ export default function CategoriesPage() {
         ) : (
           <div className="grid grid-cols-3 gap-3">
             {services.map((s) => {
-              const tile = TILES.find((t) => norm(s.name).includes(t.stem));
+              const big = ALL_TILES.find((t) => norm(s.name).includes(t.stem));
+              const tile = big ?? TILES.find((t) => norm(s.name).includes(t.stem));
               return (
                 <Link key={s.id} href={`/recherche?service=${s.slug}`} className="block overflow-hidden rounded-[22px] bg-white shadow-md shadow-wine-800/10 transition-transform active:scale-95">
                   {tile ? (
-                    <img src={`/categories/${tile.file}.webp`} alt={s.name} className="block w-full" />
+                    <img src={`/categories/${big ? "all/" : ""}${tile.file}.webp`} alt={s.name} className="block w-full" />
                   ) : (
                     <div className="flex aspect-[167/142] flex-col items-center justify-center gap-1 p-2 text-center">
                       <span className="text-3xl">{s.icon ?? "🔧"}</span>
