@@ -17,4 +17,8 @@ export const ALL_TILES = [
   { file: 'traiteur', stem: 'traiteur' },
   { file: 'transport', stem: 'transp' },
   { file: 'serrurerie', stem: 'serrur' },
+  { file: 'demenagement', stem: 'demenag' },
+  { file: 'securite', stem: 'securit' },
+  { file: 'technologie', stem: 'techno' },
+  { file: 'services', stem: 'service' },
 ];
