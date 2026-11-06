@@ -7,6 +7,7 @@ import { Star, Search, ArrowRight, MapPin, Zap } from "lucide-react";
 import { NavMenu } from "@/components/NavMenu";
 import { Badge } from "@/components/ui/Badge";
 import CategoryGrid from "@/components/CategoryGrid";
+import HomeHeader from "@/components/HomeHeader";
 import { supabase } from "@/lib/supabase";
 import { getEffectiveStatus } from "@/lib/availability";
 
@@ -217,54 +218,20 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-beige-50">
       <div className="mx-auto max-w-md pb-6">
-        <section className="rounded-b-[2rem] bg-gradient-to-br from-wine-600 to-wine-800 px-5 pb-6 pt-6 text-white">
-          <div className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="rounded-lg bg-beige-50">
-                <NavMenu />
-              </div>
-              <span className="text-2xl font-extrabold tracking-tight text-white">Lif<span className="text-[#F7A82A]">Ease</span></span>
-            </div>
-            <Link
-              href={profile?.role === "travailleur" ? "/travailleur/mon-profil" : "/compte"}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-beige-50 text-sm font-semibold text-wine-700"
-              aria-label="Mon compte"
-            >
-              {initiale}
-            </Link>
-          </div>
-          <p className="mb-1 flex items-center gap-1 text-sm text-beige-200">
-            <MapPin className="h-4 w-4" />
-            {profile?.city ? `${profile.city}, Bénin` : "Bénin"}
-          </p>
-          <h1 className="mb-5 text-3xl font-semibold leading-tight">
-            Quel service vous faut-il <span className="text-[#F7A82A]">aujourd'hui ?</span>
-          </h1>
-          <form onSubmit={submit} className="flex items-center gap-2 rounded-full bg-white p-1.5 pl-4">
-            <Search className="h-5 w-5 shrink-0 text-ink-400" />
-            <input
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setSearchMsg(null);
-              }}
-              placeholder="Ex. Plombier, électricien…"
-              className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink-900 outline-none"
-            />
-            <button
-              type="submit"
-              aria-label="Rechercher"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-wine-600 to-wine-800 text-white"
-            >
-              <ArrowRight className="h-5 w-5" />
-            </button>
-          </form>
-          {searchMsg && <p className="mt-2 text-xs text-beige-200">{searchMsg}</p>}
+        <HomeHeader
+          initiale={initiale}
+          accountHref={profile?.role === "travailleur" ? "/travailleur/mon-profil" : "/compte"}
+          city={profile?.city ?? null}
+          query={query}
+          onQuery={(v) => { setQuery(v); setSearchMsg(null); }}
+          onSubmit={submit}
+          searchMsg={searchMsg}
+        >
           <Link href="/recherche" className="mt-4 flex items-center justify-center gap-2 text-sm text-beige-200">
             <Zap className="h-4 w-4" />
             Rechercher un professionnel près de chez vous
           </Link>
-        </section>
+        </HomeHeader>
 
         <section className="px-5 pt-5">
           <div
