@@ -1,4 +1,5 @@
 "use client";
+import { MessagesIcon } from "@/components/MessagesIcon";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -98,7 +99,7 @@ export default function MessagesPage() {
   return (
     <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink-900">Messages</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold text-ink-900"><MessagesIcon className="h-6 w-6 text-[#16A34A]" />Messages</h1>
         {full && <Link href="/groupes/nouveau" className="text-sm font-medium text-wine-700">👥 Nouveau groupe</Link>}
       </div>
       <div className="mt-3"><PushToggle /></div>

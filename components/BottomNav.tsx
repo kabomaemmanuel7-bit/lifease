@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, ClipboardList, MessageCircle, User } from "lucide-react";
+import { Home, Search, ClipboardList, User } from "lucide-react";
+import { MessagesIcon } from "@/components/MessagesIcon";
 import { supabase } from "@/lib/supabase";
 import { countUnread } from "@/lib/unread";
 
@@ -11,7 +12,7 @@ const TABS = [
   { href: "/", label: "Accueil", Icon: Home, fill: true },
   { href: "/recherche", label: "Recherche", Icon: Search, fill: false },
   { href: "/travailleur/demandes", label: "Demandes", Icon: ClipboardList, fill: false },
-  { href: "/messages", label: "Messages", Icon: MessageCircle, fill: true },
+  { href: "/messages", label: "Messages", Icon: MessagesIcon, fill: true },
   { href: "/compte", label: "Compte", Icon: User, fill: true },
 ];
 
@@ -47,11 +48,6 @@ export function BottomNav() {
               <Link key={href} href={href} className={`relative flex flex-1 flex-col items-center gap-1 pb-3 pt-2 text-[12px] ${active ? "font-semibold text-[#16A34A]" : "font-medium text-[#5B6488]"}`}>
                 <span className="relative">
                   <Icon className="h-7 w-7" fill={fill ? "currentColor" : "none"} strokeWidth={fill ? 1.5 : 2.2} />
-                  {href === "/messages" && (
-                    <svg viewBox="0 0 24 24" className="absolute inset-0 h-7 w-7" fill="white">
-                      <circle cx="8.3" cy="11.8" r="1.1" /><circle cx="12" cy="11.8" r="1.1" /><circle cx="15.7" cy="11.8" r="1.1" />
-                    </svg>
-                  )}
                   {href === "/messages" && unread > 0 && (
                     <span className="absolute -right-2.5 -top-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">{unread > 9 ? "9+" : unread}</span>
                   )}

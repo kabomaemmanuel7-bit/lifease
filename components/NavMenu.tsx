@@ -1,4 +1,5 @@
 "use client";
+import { MessagesIcon } from "@/components/MessagesIcon";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -102,7 +103,7 @@ export function NavMenu() {
                 Accueil
               </SimpleLink>
               <SimpleLink href="/messages" onClick={closeMenu}>
-                Messages
+                <span className="flex items-center gap-2"><MessagesIcon className="h-5 w-5" />Messages</span>
               </SimpleLink>
 
               <button
