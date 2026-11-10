@@ -98,47 +98,47 @@ export default function MessagesPage() {
   if (!me) return <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6"><Link href="/" className="text-wine-700 underline">Connecte-toi pour voir tes messages</Link></main>;
 
   return (
-    <main className="mx-auto min-h-screen max-w-md bg-[#F3F8F5] px-5 pb-28 pt-6">
+    <main className="mx-auto min-h-screen max-w-md bg-[#101916] px-5 pb-28 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-ink-900"><MessagesIcon className="h-9 w-9 text-[#16A34A]" />Messages</h1>
-        {full && <Link href="/groupes/nouveau" className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#15803D] shadow-md">👥 Nouveau groupe</Link>}
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-[#F4F7F5]"><MessagesIcon className="h-9 w-9 text-[#39E6B0]" />Messages</h1>
+        {full && <Link href="/groupes/nouveau" className="rounded-full bg-[#145B46] px-4 py-2 text-sm font-semibold text-[#39E6B0]">👥 Nouveau groupe</Link>}
       </div>
       <div className="mt-4"><PushToggle /></div>
-      <div className="mt-4 flex gap-2 rounded-full bg-white p-1 shadow-sm">
-        <button onClick={() => setTab("actives")} className={"flex-1 rounded-full py-2.5 text-sm font-semibold " + (tab === "actives" ? "bg-[#16A34A] text-white shadow" : "text-ink-600")}>Conversations</button>
-        {full && <button onClick={() => setTab("archives")} className={"flex-1 rounded-full py-2.5 text-sm font-semibold " + (tab === "archives" ? "bg-[#16A34A] text-white shadow" : "text-ink-600")}>Archivées{nArch > 0 ? " (" + nArch + ")" : ""}</button>}
+      <div className="mt-4 flex gap-2 rounded-full bg-[#252D2A] p-1">
+        <button onClick={() => setTab("actives")} className={"flex-1 rounded-full py-2.5 text-sm font-semibold " + (tab === "actives" ? "bg-[#39E6B0] text-[#101916] shadow" : "text-[#F4F7F5]/70")}>Conversations</button>
+        {full && <button onClick={() => setTab("archives")} className={"flex-1 rounded-full py-2.5 text-sm font-semibold " + (tab === "archives" ? "bg-[#39E6B0] text-[#101916] shadow" : "text-[#F4F7F5]/70")}>Archivées{nArch > 0 ? " (" + nArch + ")" : ""}</button>}
       </div>
       <div className="mt-4 space-y-3">
-        {shown.length === 0 && <p className="text-sm text-ink-400">{tab === "archives" ? "Aucune conversation archivée." : "Aucune conversation pour l’instant."}</p>}
+        {shown.length === 0 && <p className="text-sm text-[#F4F7F5]/50">{tab === "archives" ? "Aucune conversation archivée." : "Aucune conversation pour l’instant."}</p>}
         {shown.map((r) => (
-          <Link key={r.id} href={r.group ? `/messages/groupe/${r.id}` : `/messages/${r.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 shadow-md">
+          <Link key={r.id} href={r.group ? `/messages/groupe/${r.id}` : `/messages/${r.id}`} className="flex items-center gap-3 rounded-2xl bg-[#252D2A] p-3.5">
             {r.group ? (r.pic ? <img src={r.pic} alt="" className="h-11 w-11 rounded-full object-cover" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#22C55E] to-[#15803D] text-white">👥</div>) : avatar(r.other)}
             <div className="min-w-0 flex-1">
-              <div className="flex justify-between gap-2"><span className="truncate font-bold text-ink-900">{r.group ? r.title : name(r.other)}</span><span className="text-xs text-ink-400">{when(r.at)}</span></div>
-              <p className="truncate text-sm text-ink-600">{r.last}</p>
+              <div className="flex justify-between gap-2"><span className="truncate font-bold text-[#F4F7F5]">{r.group ? r.title : name(r.other)}</span><span className="text-xs text-[#F4F7F5]/50">{when(r.at)}</span></div>
+              <p className="truncate text-sm text-[#F4F7F5]/70">{r.last}</p>
             </div>
-            {r.unread > 0 && <span className="rounded-full bg-[#16A34A] px-2 py-0.5 text-xs font-semibold text-white">{r.unread}</span>}
-            <span className="text-xl text-ink-400">›</span>
+            {r.unread > 0 && <span className="rounded-full bg-[#39E6B0] px-2 py-0.5 text-xs font-semibold text-[#101916]">{r.unread}</span>}
+            <span className="text-xl text-[#F4F7F5]/50">›</span>
           </Link>
         ))}
       </div>
 {full && (<>
-      <button onClick={() => setShowNew(true)} aria-label="Nouvelle conversation" className="fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#22C55E] to-[#15803D] text-white shadow-xl">
+      <button onClick={() => setShowNew(true)} aria-label="Nouvelle conversation" className="fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[#39E6B0] text-[#101916] shadow-xl">
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /><path d="M12 9v6M9 12h6" /></svg>
       </button>
       {showNew && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setShowNew(false)}>
-          <div className="max-h-[75vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="max-h-[75vh] w-full overflow-y-auto rounded-t-3xl bg-[#101916] p-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-ink-900">Écrire à un travailleur</h2>
-              <button onClick={() => setShowNew(false)} aria-label="Fermer" className="text-xl text-ink-400">✕</button>
+              <h2 className="text-base font-bold text-[#F4F7F5]">Écrire à un travailleur</h2>
+              <button onClick={() => setShowNew(false)} aria-label="Fermer" className="text-xl text-[#F4F7F5]/50">✕</button>
             </div>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un nom" className="mt-3 w-full rounded-full border border-ink-400/30 bg-white px-4 py-2.5 text-sm" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un nom" className="mt-3 w-full rounded-full border border-white/10 bg-[#252D2A] px-4 py-2.5 text-sm text-[#F4F7F5]" />
             <div className="mt-3 space-y-3">
               {filtered.map((w) => (
-                <Link key={w.id} href={`/messages/avec/${w.id}`} className="flex items-center gap-3 rounded-2xl bg-[#F3F8F5] p-3.5">
+                <Link key={w.id} href={`/messages/avec/${w.id}`} className="flex items-center gap-3 rounded-2xl bg-[#252D2A] p-3.5">
                   {avatar(w.id)}
-                  <span className="font-medium text-ink-900">{w.full_name ?? "Travailleur"}</span>
+                  <span className="font-medium text-[#F4F7F5]">{w.full_name ?? "Travailleur"}</span>
                 </Link>
               ))}
             </div>
