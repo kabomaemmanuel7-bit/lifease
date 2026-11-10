@@ -86,7 +86,7 @@ export default function MessagesPage() {
   const avatar = (id: string) => {
     const p = people[id];
     if (p?.avatar_url) return <img src={p.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover" />;
-    return <div className="flex h-11 w-11 items-center justify-center rounded-full bg-wine-100 font-semibold text-wine-700">{name(id).charAt(0).toUpperCase()}</div>;
+    return <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#22C55E] to-[#15803D] font-semibold text-white">{name(id).charAt(0).toUpperCase()}</div>;
   };
   const when = (d: string) => new Date(d).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
   const filtered = workers.filter((w) => (w.full_name ?? "").toLowerCase().includes(q.toLowerCase()));
@@ -97,40 +97,44 @@ export default function MessagesPage() {
   if (!me) return <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6"><Link href="/" className="text-wine-700 underline">Connecte-toi pour voir tes messages</Link></main>;
 
   return (
-    <main className="mx-auto min-h-screen max-w-md bg-beige-50 px-5 py-6">
+    <main className="mx-auto min-h-screen max-w-md bg-[#F3F8F5] px-5 pb-28 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-ink-900"><MessagesIcon className="h-6 w-6 text-[#16A34A]" />Messages</h1>
-        {full && <Link href="/groupes/nouveau" className="text-sm font-medium text-wine-700">👥 Nouveau groupe</Link>}
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-ink-900"><MessagesIcon className="h-9 w-9 text-[#16A34A]" />Messages</h1>
+        {full && <Link href="/groupes/nouveau" className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#15803D] shadow-md">👥 Nouveau groupe</Link>}
       </div>
-      <div className="mt-3"><PushToggle /></div>
-      <div className="mt-4 flex gap-4 border-b border-beige-200 text-sm">
-        <button onClick={() => setTab("actives")} className={"pb-2 " + (tab === "actives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Conversations</button>
-        {full && <button onClick={() => setTab("archives")} className={"pb-2 " + (tab === "archives" ? "border-b-2 border-wine-700 font-medium text-wine-700" : "text-ink-600")}>Archivées{nArch > 0 ? " (" + nArch + ")" : ""}</button>}
+      <div className="mt-4"><PushToggle /></div>
+      <div className="mt-4 flex gap-2 rounded-full bg-white p-1 shadow-sm">
+        <button onClick={() => setTab("actives")} className={"flex-1 rounded-full py-2.5 text-sm font-semibold " + (tab === "actives" ? "bg-[#16A34A] text-white shadow" : "text-ink-600")}>Conversations</button>
+        {full && <button onClick={() => setTab("archives")} className={"flex-1 rounded-full py-2.5 text-sm font-semibold " + (tab === "archives" ? "bg-[#16A34A] text-white shadow" : "text-ink-600")}>Archivées{nArch > 0 ? " (" + nArch + ")" : ""}</button>}
       </div>
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 space-y-3">
         {shown.length === 0 && <p className="text-sm text-ink-400">{tab === "archives" ? "Aucune conversation archivée." : "Aucune conversation pour l’instant."}</p>}
         {shown.map((r) => (
-          <Link key={r.id} href={r.group ? `/messages/groupe/${r.id}` : `/messages/${r.id}`} className="flex items-center gap-3 rounded-md bg-white p-3 shadow-sm">
-            {r.group ? (r.pic ? <img src={r.pic} alt="" className="h-11 w-11 rounded-full object-cover" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full bg-wine-700 text-white">👥</div>) : avatar(r.other)}
+          <Link key={r.id} href={r.group ? `/messages/groupe/${r.id}` : `/messages/${r.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 shadow-md">
+            {r.group ? (r.pic ? <img src={r.pic} alt="" className="h-11 w-11 rounded-full object-cover" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#22C55E] to-[#15803D] text-white">👥</div>) : avatar(r.other)}
             <div className="min-w-0 flex-1">
-              <div className="flex justify-between gap-2"><span className="truncate font-medium text-ink-900">{r.group ? r.title : name(r.other)}</span><span className="text-xs text-ink-400">{when(r.at)}</span></div>
+              <div className="flex justify-between gap-2"><span className="truncate font-bold text-ink-900">{r.group ? r.title : name(r.other)}</span><span className="text-xs text-ink-400">{when(r.at)}</span></div>
               <p className="truncate text-sm text-ink-600">{r.last}</p>
             </div>
-            {r.unread > 0 && <span className="rounded-full bg-wine-700 px-2 py-0.5 text-xs text-white">{r.unread}</span>}
+            {r.unread > 0 && <span className="rounded-full bg-[#16A34A] px-2 py-0.5 text-xs font-semibold text-white">{r.unread}</span>}
+            <span className="text-xl text-ink-400">›</span>
           </Link>
         ))}
       </div>
 {full && (<>
-      <h2 className="mt-8 text-sm font-semibold text-ink-900">Écrire à un travailleur</h2>
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un nom" className="mt-2 w-full rounded-md border border-ink-400/30 bg-white px-3 py-2 text-sm" />
-      <div className="mt-3 space-y-2">
+      <h2 id="ecrire" className="mt-8 text-sm font-semibold text-ink-900">Écrire à un travailleur</h2>
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un nom" className="mt-2 w-full rounded-full border border-ink-400/30 bg-white px-4 py-2.5 text-sm" />
+      <div className="mt-3 space-y-3">
         {filtered.map((w) => (
-          <Link key={w.id} href={`/messages/avec/${w.id}`} className="flex items-center gap-3 rounded-md bg-white p-3 shadow-sm">
+          <Link key={w.id} href={`/messages/avec/${w.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 shadow-md">
             {avatar(w.id)}
-            <span className="text-ink-900">{w.full_name ?? "Travailleur"}</span>
+            <span className="font-medium text-ink-900">{w.full_name ?? "Travailleur"}</span>
           </Link>
         ))}
       </div>
+      <a href="#ecrire" aria-label="Nouvelle conversation" className="fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#22C55E] to-[#15803D] text-white shadow-xl">
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /><path d="M12 9v6M9 12h6" /></svg>
+      </a>
 </>)}
     </main>
   );
