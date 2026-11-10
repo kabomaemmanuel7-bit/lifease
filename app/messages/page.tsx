@@ -18,6 +18,7 @@ export default function MessagesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [workers, setWorkers] = useState<Person[]>([]);
   const [q, setQ] = useState("");
+  const [showNew, setShowNew] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const full = role === "travailleur" || role === "admin";
   useEffect(() => {
@@ -122,19 +123,28 @@ export default function MessagesPage() {
         ))}
       </div>
 {full && (<>
-      <h2 id="ecrire" className="mt-8 text-sm font-semibold text-ink-900">Écrire à un travailleur</h2>
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un nom" className="mt-2 w-full rounded-full border border-ink-400/30 bg-white px-4 py-2.5 text-sm" />
-      <div className="mt-3 space-y-3">
-        {filtered.map((w) => (
-          <Link key={w.id} href={`/messages/avec/${w.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 shadow-md">
-            {avatar(w.id)}
-            <span className="font-medium text-ink-900">{w.full_name ?? "Travailleur"}</span>
-          </Link>
-        ))}
-      </div>
-      <a href="#ecrire" aria-label="Nouvelle conversation" className="fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#22C55E] to-[#15803D] text-white shadow-xl">
+      <button onClick={() => setShowNew(true)} aria-label="Nouvelle conversation" className="fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#22C55E] to-[#15803D] text-white shadow-xl">
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /><path d="M12 9v6M9 12h6" /></svg>
-      </a>
+      </button>
+      {showNew && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setShowNew(false)}>
+          <div className="max-h-[75vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-ink-900">Écrire à un travailleur</h2>
+              <button onClick={() => setShowNew(false)} aria-label="Fermer" className="text-xl text-ink-400">✕</button>
+            </div>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un nom" className="mt-3 w-full rounded-full border border-ink-400/30 bg-white px-4 py-2.5 text-sm" />
+            <div className="mt-3 space-y-3">
+              {filtered.map((w) => (
+                <Link key={w.id} href={`/messages/avec/${w.id}`} className="flex items-center gap-3 rounded-2xl bg-[#F3F8F5] p-3.5">
+                  {avatar(w.id)}
+                  <span className="font-medium text-ink-900">{w.full_name ?? "Travailleur"}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 </>)}
     </main>
   );
