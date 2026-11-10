@@ -1,4 +1,5 @@
 "use client";
+import { Camera, Mic, SendHorizontal } from "lucide-react";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -509,9 +510,9 @@ export default function GroupChatPage() {
           </>
         ) : (
           <>
-            <button onClick={() => setSheet(true)} disabled={busy} aria-label="Joindre un fichier" className="px-1 text-2xl text-wine-700">{busy ? "…" : "+"}</button>
+            <button onClick={() => setSheet(true)} disabled={busy} aria-label="Joindre un fichier" className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EEF1F0] text-[#4B5563]">{busy ? "…" : <Camera className="h-6 w-6" />}</button>
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="Écrire un message" className="flex-1 rounded-full border border-ink-400/30 px-4 py-2 text-sm" />
-            {text.trim() ? <button onClick={send} className="rounded-full bg-wine-700 px-4 py-2 text-sm text-white">Envoyer</button> : <button onClick={startRec} aria-label="Message vocal" className="rounded-full bg-wine-700 px-3 py-2 text-white">🎤</button>}
+            {text.trim() ? <button onClick={send} aria-label="Envoyer" className="flex h-11 w-11 items-center justify-center rounded-full bg-[#22C55E] text-white"><SendHorizontal className="h-5 w-5" /></button> : <button onClick={startRec} aria-label="Message vocal" className="flex h-11 w-11 items-center justify-center rounded-full bg-[#22C55E] text-white"><Mic className="h-6 w-6" fill="currentColor" /></button>}
           </>
         )}
       </footer>
