@@ -73,7 +73,7 @@ export default function ComptePage() {
         .single();
 
       if (profileData?.role === "travailleur") {
-        router.push("/travailleur/mon-profil");
+        router.replace("/travailleur/mon-profil");
         return;
       }
 
