@@ -10,7 +10,7 @@ import MessageLink from "@/components/MessageLink";
 
 type Row = {
   id: string; description: string; status: string; created_at: string;
-  worker_id: string | null; contact_name: string | null; address: string | null;
+  worker_id: string | null; sub_service: string | null; contact_name: string | null; address: string | null;
   google_maps_link: string | null; video_url: string | null;
   service: { name: string } | null;
 };
@@ -28,7 +28,7 @@ export default function MesDemandesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/connexion"); return; }
       const { data, error: e } = await supabase.from("requests")
-        .select("id, description, status, created_at, worker_id, contact_name, address, google_maps_link, video_url, service:services ( name )")
+        .select("id, description, status, created_at, worker_id, sub_service, contact_name, address, google_maps_link, video_url, service:services ( name )")
         .eq("client_id", user.id).order("created_at", { ascending: false });
       if (e) { setError("Impossible de charger : " + e.message); setLoading(false); return; }
       const list = (data as unknown as Row[]) ?? [];

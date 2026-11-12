@@ -21,7 +21,7 @@ interface DemandeRow {
   client: { full_name: string; phone: string | null; city: string | null } | null;
   category: { name: string; icon: string | null } | null;
 client_id: string;
-contact_name: string | null; address: string | null; google_maps_link: string | null; video_url: string | null; contact_phone: string | null;
+sub_service: string | null; contact_name: string | null; address: string | null; google_maps_link: string | null; video_url: string | null; contact_phone: string | null;
 }
 
 const URGENCY_LABEL: Record<Urgency, string> = {
@@ -73,7 +73,7 @@ export default function DemandesTravailleurPage() {
     const { data, error: fetchError } = await supabase
       .from('requests')
       .select(
-        `id, description, urgency, status, created_at, client_id, contact_name, address, google_maps_link, video_url, contact_phone,
+        `id, description, urgency, status, created_at, client_id, sub_service, contact_name, address, google_maps_link, video_url, contact_phone,
          client:profiles!requests_client_id_fkey ( full_name, phone, city ),
          category:services ( name )`
       )
