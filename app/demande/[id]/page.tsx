@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 type Urgency = "normal" | "eleve" | "tres_eleve";
 
 type ServiceItem = {
+  slug: string;
   id: string;
   name: string;
 };
@@ -27,6 +28,8 @@ export default function DemandePage() {
   const [workerName, setWorkerName] = useState<string>("");
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [serviceId, setServiceId] = useState("");
+  const [subs, setSubs] = useState<string[]>([]);
+  const [subService, setSubService] = useState("");
   const [contactName, setContactName] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
@@ -43,7 +46,7 @@ export default function DemandePage() {
         await Promise.all([
           supabase.from("profiles").select("full_name").eq("id", params.id).single(),
           supabase.from("worker_profiles").select("service_id").eq("id", params.id).single(),
-          supabase.from("services").select("id, name").order("name"),
+          supabase.from("services").select("id, slug, name").order("name"),
         ]);
 
       setWorkerName(profileData?.full_name ?? "ce professionnel");
@@ -55,9 +58,20 @@ export default function DemandePage() {
     loadData();
   }, [params.id]);
 
+  useEffect(() => {
+    setSubService("");
+    const sv = services.find((x) => x.id === serviceId);
+    if (!sv) { setSubs([]); return; }
+    supabase.from("sub_services").select("name").eq("service_slug", sv.slug).order("name").then(({ data }) => setSubs((data ?? []).map((r) => r.name as string)));
+  }, [serviceId, services]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (subs.length > 0 && !subService) {
+      setError("Merci de choisir le sous-service.");
+      return;
+    }
 
     if (!serviceId) {
       setError("Merci de choisir un service.");
@@ -117,6 +131,7 @@ export default function DemandePage() {
       client_id: session.user.id,
       worker_id: params.id,
       service_id: serviceId,
+      sub_service: subService || null,
       contact_name: contactName.trim(),
       address: address.trim(),
       contact_phone: phone.trim(),
@@ -188,6 +203,23 @@ export default function DemandePage() {
               </option>
             ))}
           </select>
+          {subs.length > 0 && (
+            <>
+              <label className="mb-1.5 block text-sm font-medium text-ink-900">
+                Sous-service <span className="text-wine-600">*</span>
+              </label>
+              <select
+                value={subService}
+                onChange={(e) => setSubService(e.target.value)}
+                className="mb-4 w-full rounded-md border border-wine-100 bg-white px-4 py-3 text-sm text-ink-900 focus:border-wine-400 focus:outline-none"
+              >
+                <option value="">Sélectionner…</option>
+                {subs.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </>
+          )}
 
           <label className="mb-1.5 block text-sm font-medium text-ink-900">
             Nom et prénom
