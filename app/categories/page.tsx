@@ -37,7 +37,7 @@ export default function CategoriesPage() {
               const big = ALL_TILES.find((t) => norm(s.name).includes(t.stem));
               const tile = big ?? TILES.find((t) => norm(s.name).includes(t.stem));
               return (
-                <Link key={s.id} href={`/recherche?service=${s.slug}`} className="flex items-center gap-4 rounded-2xl bg-white p-3 shadow-md shadow-wine-800/10 transition-transform active:scale-[0.98]">
+                <Link key={s.id} href={`/categories/${s.slug}`} className="flex items-center gap-4 rounded-2xl bg-white p-3 shadow-md shadow-wine-800/10 transition-transform active:scale-[0.98]">
                   <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-beige-50">
                     {tile ? (
                       <img src={`/categories/${big ? "all/" : ""}${tile.file}.webp`} alt="" className="absolute left-1/2 top-0 w-[88px] max-w-none -translate-x-1/2" />
