@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart, MessageCircle, Send, Link2, Pencil, Check, X } from "lucide-react";
+import { Heart, MessageCircle, Send, Link2, Pencil, Check, X, Trash2 } from "lucide-react";
 import { InterventionCarousel } from "@/components/InterventionCarousel";
 import { supabase } from "@/lib/supabase";
 
@@ -49,6 +49,22 @@ export function InterventionCard({
   const [editDescription, setEditDescription] = useState(description ?? "");
   const [editLocation, setEditLocation] = useState(location ?? "");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [gone, setGone] = useState(false);
+  const [delError, setDelError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    setDeleting(true);
+    setDelError(null);
+    const { data, error } = await supabase.from("worker_portfolio").delete().eq("id", id).select("id");
+    setDeleting(false);
+    if (error || !data || data.length === 0) {
+      setDelError(error ? "Suppression impossible : " + error.message : "Suppression refusée (droits manquants).");
+      return;
+    }
+    setGone(true);
+  }
 
   useEffect(() => {
     async function load() {
@@ -174,7 +190,7 @@ export function InterventionCard({
   }
 
   return (
-    <div className="overflow-hidden rounded-md border border-wine-100 bg-white">
+    <div style={{ display: gone ? "none" : undefined }} className="overflow-hidden rounded-md border border-wine-100 bg-white">
       <InterventionCarousel imageUrls={imageUrls} videoUrl={videoUrl} />
       <div className="p-3">
         {editing ? (
@@ -245,6 +261,20 @@ export function InterventionCard({
           </>
         )}
 
+        {isOwner && (
+          <div className="mt-2">
+            {confirmDel ? (
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-ink-600">Supprimer cette intervention ?</span>
+                <button onClick={handleDelete} disabled={deleting} className="rounded-md bg-red-600 px-3 py-1.5 font-medium text-white">{deleting ? "Suppression…" : "Oui, supprimer"}</button>
+                <button onClick={() => setConfirmDel(false)} className="rounded-md border border-wine-200 px-3 py-1.5 font-medium text-wine-700">Annuler</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmDel(true)} className="flex items-center gap-1 text-xs text-red-600"><Trash2 className="h-3.5 w-3.5" />Supprimer</button>
+            )}
+            {delError && <p className="mt-1 text-xs text-red-600">{delError}</p>}
+          </div>
+        )}
         <div className="mt-3 flex items-center gap-4 border-t border-beige-100 pt-2">
           <button
             onClick={toggleLike}
