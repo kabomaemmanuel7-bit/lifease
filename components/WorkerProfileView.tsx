@@ -126,6 +126,56 @@ export function WorkerProfileView({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [delError, setDelError] = useState<string | null>(null);
 
+  const [mediaBusyId, setMediaBusyId] = useState<string | null>(null);
+  const [mediaMsg, setMediaMsg] = useState<{ id: string; text: string } | null>(null);
+
+  async function saveMedia(itemId: string, list: { url: string; isVideo: boolean }[]) {
+    const images = list.filter((m) => !m.isVideo).map((m) => m.url);
+    const video = list.find((m) => m.isVideo)?.url ?? null;
+    const { data, error } = await supabase.from("worker_portfolio").update({ media_urls: list.map((m) => m.url), image_urls: images, image_url: images[0] ?? null, video_url: video }).eq("id", itemId).select("id");
+    if (error || !data || data.length === 0) return false;
+    setPortfolio((prev) => prev.map((p) => (p.id === itemId ? { ...p, media_urls: list.map((m) => m.url), image_urls: images, video_url: video } : p)));
+    return true;
+  }
+
+  async function addMedia(item: PortfolioItem, picked: File[]) {
+    if (picked.length === 0) return;
+    setMediaMsg(null);
+    const tooBig = picked.find((f) => f.size > 40 * 1024 * 1024);
+    if (tooBig) { setMediaMsg({ id: item.id, text: `"${tooBig.name}" dépasse 40 Mo.` }); return; }
+    const current = getMedia(item).map((m) => ({ url: m.url, isVideo: m.isVideo }));
+    if (current.length + picked.length > 20) { setMediaMsg({ id: item.id, text: "Maximum 20 fichiers par intervention." }); return; }
+    setMediaBusyId(item.id);
+    const added: { url: string; isVideo: boolean }[] = [];
+    for (let i = 0; i < picked.length; i++) {
+      const file = picked[i];
+      const path = `${workerId}/${Date.now()}-${i}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const { error: upError } = await supabase.storage.from("interventions").upload(path, file, { contentType: file.type });
+      if (upError) { setMediaMsg({ id: item.id, text: `Échec de l'envoi de "${file.name}".` }); break; }
+      const { data: pub } = supabase.storage.from("interventions").getPublicUrl(path);
+      added.push({ url: pub.publicUrl, isVideo: file.type.startsWith("video/") });
+    }
+    if (added.length > 0) {
+      const ok = await saveMedia(item.id, [...current, ...added]);
+      if (!ok) setMediaMsg({ id: item.id, text: "Fichiers envoyés mais l'intervention n'a pas pu être mise à jour." });
+    }
+    setMediaBusyId(null);
+  }
+
+  async function removeMedia(item: PortfolioItem, url: string) {
+    const current = getMedia(item).map((m) => ({ url: m.url, isVideo: m.isVideo }));
+    if (current.length <= 1) { setMediaMsg({ id: item.id, text: "Une intervention doit garder au moins un fichier. Supprime plutôt l'intervention." }); return; }
+    if (!window.confirm("Retirer ce fichier de l'intervention ?")) return;
+    setMediaMsg(null);
+    setMediaBusyId(item.id);
+    const ok = await saveMedia(item.id, current.filter((m) => m.url !== url));
+    setMediaBusyId(null);
+    if (!ok) { setMediaMsg({ id: item.id, text: "Suppression du fichier impossible (droits manquants)." }); return; }
+    const marker = "/interventions/";
+    const idx = url.indexOf(marker);
+    if (idx >= 0) await supabase.storage.from("interventions").remove([decodeURIComponent(url.slice(idx + marker.length))]);
+  }
+
   async function deleteItem(itemId: string) {
     setDeletingId(itemId);
     setDelError(null);
@@ -438,6 +488,27 @@ export function WorkerProfileView({
                   </p>
                 )}
 
+                {variant === "own" && (
+                  <div className="px-3 pt-2">
+                    <div className="flex flex-wrap gap-2">
+                      {media.map((m) => (
+                        <div key={m.url} className="relative h-16 w-16 overflow-hidden rounded-md bg-black">
+                          {m.isVideo ? (
+                            <video src={m.url} preload="metadata" muted className="h-full w-full object-cover" />
+                          ) : (
+                            <img src={m.url} alt="" className="h-full w-full object-cover" />
+                          )}
+                          <button onClick={() => removeMedia(item, m.url)} disabled={mediaBusyId === item.id} aria-label="Retirer ce fichier" className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-xs text-white">✕</button>
+                        </div>
+                      ))}
+                      <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-md border border-dashed border-wine-300 text-2xl text-wine-600">
+                        {mediaBusyId === item.id ? "…" : "+"}
+                        <input type="file" accept="image/*,video/*" multiple className="hidden" disabled={mediaBusyId === item.id} onChange={(e) => { const f = Array.from(e.target.files ?? []); e.target.value = ""; addMedia(item, f); }} />
+                      </label>
+                    </div>
+                    {mediaMsg && mediaMsg.id === item.id && <p className="mt-1 text-xs text-red-600">{mediaMsg.text}</p>}
+                  </div>
+                )}
                 {variant === "own" && (
                   <div className="px-3 pt-2">
                     {confirmDelId === item.id ? (
