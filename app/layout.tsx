@@ -4,6 +4,7 @@ import "./globals.css";
 import { RegisterSW } from "@/components/RegisterSW";
 import { BottomNav } from "@/components/BottomNav";
 import PaymentPrompt from "@/components/PaymentPrompt";
+import SplashScreen from "@/components/SplashScreen";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,6 +38,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className={inter.variable}>
       <body>
+        <SplashScreen />
         {children}
         <BottomNav />
         <PaymentPrompt />
