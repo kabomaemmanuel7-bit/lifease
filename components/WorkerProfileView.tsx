@@ -122,6 +122,22 @@ export function WorkerProfileView({
   const router = useRouter();
   const [worker, setWorker] = useState<WorkerData | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
+  const [confirmDelId, setConfirmDelId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [delError, setDelError] = useState<string | null>(null);
+
+  async function deleteItem(itemId: string) {
+    setDeletingId(itemId);
+    setDelError(null);
+    const { data, error } = await supabase.from("worker_portfolio").delete().eq("id", itemId).select("id");
+    setDeletingId(null);
+    if (error || !data || data.length === 0) {
+      setDelError(error ? "Suppression impossible : " + error.message : "Suppression refusée (droits manquants).");
+      return;
+    }
+    setPortfolio((prev) => prev.filter((p) => p.id !== itemId));
+    setConfirmDelId(null);
+  }
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [cvEntries, setCvEntries] = useState<CvEntry[]>([]);
   const [offerings, setOfferings] = useState<Offering[]>([]);
@@ -368,6 +384,9 @@ export function WorkerProfileView({
 
       {tab === "interventions" && (
         <div className="flex flex-col gap-4">
+          {variant === "own" && (
+            <Link href="/travailleur/interventions" className="flex items-center justify-center rounded-md bg-wine-700 py-3 text-sm font-semibold text-white">+ Publier photos ou vidéos</Link>
+          )}
           {portfolio.length === 0 && (
             <p className="text-center text-sm text-ink-600">
               Aucune intervention publiée pour le moment.
@@ -419,6 +438,20 @@ export function WorkerProfileView({
                   </p>
                 )}
 
+                {variant === "own" && (
+                  <div className="px-3 pt-2">
+                    {confirmDelId === item.id ? (
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="text-ink-600">Supprimer cette intervention ?</span>
+                        <button onClick={() => deleteItem(item.id)} disabled={deletingId === item.id} className="rounded-md bg-red-600 px-3 py-1.5 font-medium text-white">{deletingId === item.id ? "Suppression…" : "Oui, supprimer"}</button>
+                        <button onClick={() => setConfirmDelId(null)} className="rounded-md border border-wine-200 px-3 py-1.5 font-medium text-wine-700">Annuler</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setConfirmDelId(item.id); setDelError(null); }} className="text-xs font-medium text-red-600">Supprimer cette intervention</button>
+                    )}
+                    {confirmDelId === item.id && delError && <p className="mt-1 text-xs text-red-600">{delError}</p>}
+                  </div>
+                )}
                 <div className="p-3">
                   {item.description && (
                     <p className="whitespace-pre-line text-sm text-ink-900">
