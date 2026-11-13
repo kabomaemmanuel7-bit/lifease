@@ -19,7 +19,7 @@ export const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g
 export default function CategoryGrid({ services }: { services: Service[] }) {
   const hrefFor = (stem: string) => {
     const s = services.find((x) => norm(x.name).includes(stem));
-    return s ? `/categories/${s.slug}` : '/categories';
+    return s ? `/recherche?service=${s.slug}` : '/categories';
   };
   return (
     <section className="px-5 pt-5">
