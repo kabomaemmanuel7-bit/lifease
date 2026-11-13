@@ -33,7 +33,6 @@ export default function CategoryPage() {
           </Link>
           <h1 className="text-xl font-bold text-ink-900">{title}</h1>
         </div>
-        <Link href={`/recherche?service=${slug}`} className="mb-4 block rounded-2xl bg-wine-700 py-3 text-center text-sm font-semibold text-white">Voir tous les professionnels</Link>
         {loading ? <p className="text-sm text-ink-600">Chargement…</p> : (
           <div className="flex flex-col gap-3">
             {subs.length === 0 && <p className="text-sm text-ink-400">Aucun sous-service pour l’instant.</p>}
