@@ -23,6 +23,7 @@ type WorkerData = {
   description: string | null;
   bio: string | null;
   full_name: string;
+  avatar_url: string | null;
 };
 
 type PortfolioItem = {
@@ -176,6 +177,48 @@ export function WorkerProfileView({
     if (idx >= 0) await supabase.storage.from("interventions").remove([decodeURIComponent(url.slice(idx + marker.length))]);
   }
 
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const [manageId, setManageId] = useState<string | null>(null);
+  const [likes, setLikes] = useState<Record<string, { count: number; mine: boolean }>>({});
+
+  useEffect(() => {
+    if (portfolio.length === 0) return;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const uid = session?.user.id ?? null;
+      const { data } = await supabase.from("intervention_likes").select("portfolio_id, user_id").in("portfolio_id", portfolio.map((p) => p.id));
+      const next: Record<string, { count: number; mine: boolean }> = {};
+      (data ?? []).forEach((r) => {
+        const k = r.portfolio_id as string;
+        const cur = next[k] ?? { count: 0, mine: false };
+        next[k] = { count: cur.count + 1, mine: cur.mine || r.user_id === uid };
+      });
+      setLikes(next);
+    })();
+  }, [portfolio]);
+
+  async function toggleLike(itemId: string) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const uid = session.user.id;
+    const cur = likes[itemId] ?? { count: 0, mine: false };
+    if (cur.mine) {
+      await supabase.from("intervention_likes").delete().eq("portfolio_id", itemId).eq("user_id", uid);
+      setLikes((p) => ({ ...p, [itemId]: { count: Math.max(0, cur.count - 1), mine: false } }));
+    } else {
+      await supabase.from("intervention_likes").insert({ portfolio_id: itemId, user_id: uid });
+      setLikes((p) => ({ ...p, [itemId]: { count: cur.count + 1, mine: true } }));
+    }
+  }
+
+  async function shareProfile() {
+    const url = window.location.href;
+    try {
+      if (navigator.share) await navigator.share({ url });
+      else { await navigator.clipboard.writeText(url); alert("Lien copié"); }
+    } catch {}
+  }
+
   async function deleteItem(itemId: string) {
     setDeletingId(itemId);
     setDelError(null);
@@ -220,7 +263,7 @@ export function WorkerProfileView({
         { data: cvData },
         { data: offeringData },
       ] = await Promise.all([
-        supabase.from("profiles").select("full_name").eq("id", workerId).single(),
+        supabase.from("profiles").select("full_name, avatar_url").eq("id", workerId).single(),
         supabase
           .from("worker_portfolio")
           .select(
@@ -296,6 +339,7 @@ export function WorkerProfileView({
       setWorker({
         ...workerProfile,
         full_name: profile?.full_name ?? "Professionnel",
+        avatar_url: profile?.avatar_url ?? null,
       });
       setPortfolio((portfolioData ?? []) as PortfolioItem[]);
       setComments(commentsWithNames);
@@ -450,118 +494,112 @@ export function WorkerProfileView({
             return (
               <article
                 key={item.id}
-                className="overflow-hidden rounded-md border border-wine-100 bg-white"
+                className="overflow-hidden rounded-xl border border-wine-100 bg-white shadow-sm"
               >
-                <div className="px-3 pt-3">
-                  <p className="text-sm font-medium text-ink-900">{item.title}</p>
-                  <p className="text-xs text-ink-400">
-                    {new Date(rawDate).toLocaleDateString("fr-FR")}
-                    {item.location ? ` – ${item.location}` : ""}
-                  </p>
+                <div className="flex items-center gap-3 px-3 pt-3">
+                  {worker.avatar_url ? (
+                    <img src={worker.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wine-700 text-sm font-semibold text-white">{(worker.full_name ?? "?").charAt(0).toUpperCase()}</div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-ink-900">{worker.full_name}</p>
+                    <p className="text-xs text-ink-400">
+                      {new Date(rawDate).toLocaleDateString("fr-FR")}
+                      {item.location ? ` · 📍 ${item.location}` : ""}
+                    </p>
+                  </div>
+                  {variant === "own" && (
+                    <div className="relative">
+                      <button onClick={() => setMenuId(menuId === item.id ? null : item.id)} aria-label="Options" className="px-2 text-xl leading-none text-ink-600">⋯</button>
+                      {menuId === item.id && (
+                        <div className="absolute right-0 top-7 z-10 w-60 overflow-hidden rounded-lg border border-wine-100 bg-white text-sm shadow-lg">
+                          <label className="block cursor-pointer px-4 py-3 text-ink-900">
+                            Ajouter des photos ou vidéos
+                            <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { const f = Array.from(e.target.files ?? []); e.target.value = ""; setMenuId(null); addMedia(item, f); }} />
+                          </label>
+                          <button onClick={() => { setManageId(item.id); setMenuId(null); }} className="block w-full px-4 py-3 text-left text-ink-900">Gérer les fichiers</button>
+                          <button onClick={() => { setConfirmDelId(item.id); setDelError(null); setMenuId(null); }} className="block w-full px-4 py-3 text-left text-red-600">Supprimer la publication</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-
+                <div className="px-3 pt-3">
+                  <p className="text-base font-semibold text-ink-900">{item.title}</p>
+                  {item.description && <p className="mt-1 whitespace-pre-line text-sm text-ink-900">{item.description}</p>}
+                </div>
                 {media.length > 0 && (
                   <div className="mt-2 flex snap-x snap-mandatory gap-1 overflow-x-auto">
                     {media.map((m) =>
                       m.isVideo ? (
-                        <video
-                          key={m.url}
-                          src={m.url}
-                          controls
-                          preload="metadata"
-                          className="h-56 w-full shrink-0 snap-center bg-black object-cover"
-                        />
+                        <video key={m.url} src={m.url} controls preload="metadata" className="h-56 w-full shrink-0 snap-center bg-black object-cover" />
                       ) : (
-                        <img
-                          key={m.url}
-                          src={m.url}
-                          alt={item.title}
-                          className="h-56 w-full shrink-0 snap-center object-cover"
-                        />
+                        <img key={m.url} src={m.url} alt={item.title} className="h-56 w-full shrink-0 snap-center object-cover" />
                       )
                     )}
                   </div>
                 )}
-                {media.length > 1 && (
-                  <p className="px-3 pt-1 text-right text-xs text-ink-400">
-                    {media.length} médias – faites glisser
-                  </p>
-                )}
-
-                {variant === "own" && (
+                {media.length > 1 && <p className="px-3 pt-1 text-right text-xs text-ink-400">{media.length} médias – faites glisser</p>}
+                {mediaBusyId === item.id && <p className="px-3 pt-2 text-xs text-ink-400">Envoi en cours…</p>}
+                {variant === "own" && mediaMsg && mediaMsg.id === item.id && <p className="px-3 pt-2 text-xs text-red-600">{mediaMsg.text}</p>}
+                {variant === "own" && manageId === item.id && (
                   <div className="px-3 pt-2">
                     <div className="flex flex-wrap gap-2">
                       {media.map((m) => (
                         <div key={m.url} className="relative h-16 w-16 overflow-hidden rounded-md bg-black">
-                          {m.isVideo ? (
-                            <video src={m.url} preload="metadata" muted className="h-full w-full object-cover" />
-                          ) : (
-                            <img src={m.url} alt="" className="h-full w-full object-cover" />
-                          )}
+                          {m.isVideo ? <video src={m.url} preload="metadata" muted className="h-full w-full object-cover" /> : <img src={m.url} alt="" className="h-full w-full object-cover" />}
                           <button onClick={() => removeMedia(item, m.url)} disabled={mediaBusyId === item.id} aria-label="Retirer ce fichier" className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-xs text-white">✕</button>
                         </div>
                       ))}
-                      <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-md border border-dashed border-wine-300 text-2xl text-wine-600">
-                        {mediaBusyId === item.id ? "…" : "+"}
-                        <input type="file" accept="image/*,video/*" multiple className="hidden" disabled={mediaBusyId === item.id} onChange={(e) => { const f = Array.from(e.target.files ?? []); e.target.value = ""; addMedia(item, f); }} />
-                      </label>
                     </div>
-                    {mediaMsg && mediaMsg.id === item.id && <p className="mt-1 text-xs text-red-600">{mediaMsg.text}</p>}
+                    <button onClick={() => setManageId(null)} className="mt-2 rounded-md border border-wine-200 px-3 py-1.5 text-xs font-medium text-wine-700">Terminé</button>
                   </div>
                 )}
-                {variant === "own" && (
+                {variant === "own" && confirmDelId === item.id && (
                   <div className="px-3 pt-2">
-                    {confirmDelId === item.id ? (
-                      <div className="flex flex-wrap items-center gap-2 text-xs">
-                        <span className="text-ink-600">Supprimer cette intervention ?</span>
-                        <button onClick={() => deleteItem(item.id)} disabled={deletingId === item.id} className="rounded-md bg-red-600 px-3 py-1.5 font-medium text-white">{deletingId === item.id ? "Suppression…" : "Oui, supprimer"}</button>
-                        <button onClick={() => setConfirmDelId(null)} className="rounded-md border border-wine-200 px-3 py-1.5 font-medium text-wine-700">Annuler</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => { setConfirmDelId(item.id); setDelError(null); }} className="text-xs font-medium text-red-600">Supprimer cette intervention</button>
-                    )}
-                    {confirmDelId === item.id && delError && <p className="mt-1 text-xs text-red-600">{delError}</p>}
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-ink-600">Supprimer cette intervention ?</span>
+                      <button onClick={() => deleteItem(item.id)} disabled={deletingId === item.id} className="rounded-md bg-red-600 px-3 py-1.5 font-medium text-white">{deletingId === item.id ? "Suppression…" : "Oui, supprimer"}</button>
+                      <button onClick={() => setConfirmDelId(null)} className="rounded-md border border-wine-200 px-3 py-1.5 font-medium text-wine-700">Annuler</button>
+                    </div>
+                    {delError && <p className="mt-1 text-xs text-red-600">{delError}</p>}
                   </div>
                 )}
-                <div className="p-3">
-                  {item.description && (
-                    <p className="whitespace-pre-line text-sm text-ink-900">
-                      {item.description}
-                    </p>
-                  )}
-                  <button
-                    onClick={() =>
-                      setOpenComments((prev) => ({ ...prev, [item.id]: !prev[item.id] }))
-                    }
-                    className="mt-2 text-xs font-medium text-wine-600"
-                  >
-                    {itemComments.length === 0
-                      ? "Aucun avis sur cette intervention"
-                      : `${isOpen ? "Masquer" : "Voir"} les avis (${itemComments.length})`}
-                  </button>
-                  {isOpen && itemComments.length > 0 && (
-                    <div className="mt-2 flex flex-col gap-2">
-                      {itemComments.map((c) => (
-                        <div key={c.id} className="rounded-md bg-beige-50 p-2">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-medium text-ink-900">
-                              {c.client_name}
-                            </p>
-                            {c.rating != null && (
-                              <span className="flex items-center gap-1 text-xs text-ink-600">
-                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                                {c.rating}
-                              </span>
-                            )}
-                          </div>
-                          {c.comment && (
-                            <p className="mt-0.5 text-xs text-ink-600">{c.comment}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div className="mt-3 flex items-center justify-between px-3 text-xs text-ink-400">
+                  <span>{likes[item.id]?.count ? `👍 ${likes[item.id].count}` : ""}</span>
+                  <span>{itemComments.length > 0 ? `${itemComments.length} avis` : ""}</span>
                 </div>
+                <div className="mx-3 mt-2 grid grid-cols-3 border-t border-wine-100 text-sm font-medium text-ink-600">
+                  <button onClick={() => toggleLike(item.id)} className={"py-2.5 " + (likes[item.id]?.mine ? "text-wine-700" : "")}>👍 J'aime</button>
+                  <button onClick={() => setOpenComments((prev) => ({ ...prev, [item.id]: !prev[item.id] }))} className="py-2.5">💬 Avis</button>
+                  <button onClick={shareProfile} className="py-2.5">↗ Partager</button>
+                </div>
+                {isOpen && (
+                  <div className="px-3 pb-3">
+                    {itemComments.length === 0 ? (
+                      <p className="pt-2 text-xs text-ink-400">Aucun avis sur cette intervention.</p>
+                    ) : (
+                      <div className="mt-2 flex flex-col gap-2">
+                        {itemComments.map((c) => (
+                          <div key={c.id} className="rounded-md bg-beige-50 p-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-medium text-ink-900">{c.client_name}</p>
+                              {c.rating != null && (
+                                <span className="flex items-center gap-1 text-xs text-ink-600">
+                                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                  {c.rating}
+                                </span>
+                              )}
+                            </div>
+                            {c.comment && <p className="mt-0.5 text-xs text-ink-600">{c.comment}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="h-3" />
               </article>
             );
           })}
