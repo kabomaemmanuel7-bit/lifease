@@ -28,10 +28,7 @@ export default function SplashScreen() {
         @keyframes lfIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
         @keyframes lfOut{to{opacity:0;visibility:hidden}}
       `}</style>
-      <svg className="lf-logo" width="96" height="96" viewBox="0 0 34 34" role="img" aria-label="LifEase">
-        <path d="M17 2C10.4 2 5 7.4 5 14c0 9 12 18 12 18s12-9 12-18c0-6.6-5.4-12-12-12z" fill="#fff" />
-        <path d="M17 9c-3 0-4.5 2.2-4.5 4.3 0 1.6 1 2.7 2.3 3.6-1.6.3-3 1.3-3 3.1h2c0-1.2 1.3-1.8 3.2-1.8s3.2.6 3.2 1.8h2c0-1.8-1.4-2.8-3-3.1 1.3-.9 2.3-2 2.3-3.6C21.5 11.2 20 9 17 9z" fill="#0B6B34" />
-      </svg>
+      <img className="lf-logo" src="/icons/icon-512.png" width="112" height="112" alt="LifEase" style={{ borderRadius: 26, boxShadow: "0 10px 30px rgba(0,0,0,.35)" }} />
       <div className="lf-name">LifEase</div>
       <div className="lf-tag">Trouvez. Contactez. Réparez.</div>
     </div>
