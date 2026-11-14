@@ -21,12 +21,13 @@ export default function SplashScreen() {
   return (
     <div className="lf-splash" aria-hidden="true">
       <style>{`
-        .lf-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:linear-gradient(160deg,#0B6B34,#064E25);animation:lfOut .5s ease 1.7s forwards}
+        .lf-splash{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:linear-gradient(160deg,#0B6B34,#064E25);animation:lfOut .5s ease 1.7s forwards}
         .lf-logo{animation:lfIn .9s cubic-bezier(.2,.8,.2,1) both}
         .lf-name{font-size:34px;font-weight:700;letter-spacing:-0.02em;color:#fff;animation:lfIn .9s cubic-bezier(.2,.8,.2,1) .25s both}
         .lf-tag{font-size:13px;color:#BBF7D0;animation:lfIn .9s ease .6s both}
         @keyframes lfIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
         @keyframes lfOut{to{opacity:0;visibility:hidden}}
+        @media (display-mode:standalone){.lf-splash{display:flex}}
       `}</style>
       <img className="lf-logo" src="/icons/icon-512.png" width="112" height="112" alt="LifEase" style={{ borderRadius: 26, boxShadow: "0 10px 30px rgba(0,0,0,.35)" }} />
       <div className="lf-name">LifEase</div>
