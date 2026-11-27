@@ -65,6 +65,11 @@ export default function ConnexionPage() {
           required
         />
 
+        <div className="-mt-2 mb-4 text-right">
+          <Link href="/mot-de-passe-oublie" className="text-sm font-medium text-wine-600">
+            Mot de passe oublié ?
+          </Link>
+        </div>
         {error && (
           <p className="mb-4 text-sm text-red-600" role="alert">
             {error}
